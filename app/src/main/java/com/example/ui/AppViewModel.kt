@@ -1139,13 +1139,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var updateProgress by mutableStateOf(0f)
     var updateDownloadSpeed by mutableStateOf("0 KB/s")
     var updateBytesDownloaded by mutableStateOf("0 MB")
-    var updateBytesTotal by mutableStateOf("24.8 MB")
+    var updateBytesTotal by mutableStateOf("51.0 MB")
     var updateReleaseNotes by mutableStateOf(
         prefs.getString("update_release_notes", "• સુધારેલ કમિશન હિસાબ / Improved Commission Calculation\n• નવું ૨૨% જીએસટી લેઆઉટ / New 22% GST Layout\n• બગ ફિક્સ અને સુરક્ષા સુધારા / Bug fixes & security improvements") ?: "• સુધારેલ કમિશન હિસાબ / Improved Commission Calculation\n• નવું ૨૨% જીએસટી લેઆઉટ / New 22% GST Layout\n• બગ ફિક્સ અને સુરક્ષા સુધારા / Bug fixes & security improvements"
     )
 
     var googleDriveUpdateUrl by mutableStateOf(
-        prefs.getString("google_drive_update_url", "https://drive.google.com/file/d/1_9i7RMyE4M9N17lFmB9u_JzWqXv9tF3z/view?usp=sharing") ?: "https://drive.google.com/file/d/1_9i7RMyE4M9N17lFmB9u_JzWqXv9tF3z/view?usp=sharing"
+        prefs.getString("google_drive_update_url", "https://mukesh053.github.io/EarnMitra/APK_DOWNLOAD/app-debug.apk") ?: "https://mukesh053.github.io/EarnMitra/APK_DOWNLOAD/app-debug.apk"
     )
 
     fun saveUpdateConfiguration(versionName: String, versionCode: Int, releaseNotes: String, driveUrl: String) {

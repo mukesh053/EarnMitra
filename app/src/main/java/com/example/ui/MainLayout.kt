@@ -4504,7 +4504,7 @@ fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
 
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "ગૂગલ ડ્રાઇવ અપડેટ કંટ્રોલ / Google Drive Update Control",
+                            text = "સર્વર અપડેટ કંટ્રોલ / Server Update Control",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -4514,7 +4514,7 @@ fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
                         OutlinedTextField(
                             value = editDriveUrl,
                             onValueChange = { editDriveUrl = it },
-                            label = { Text("ગૂગલ ડ્રાઇવ APK લિંક / Google Drive APK Link", fontSize = 10.sp) },
+                            label = { Text("અપડેટ APK લિંક (GitHub Pages અથવા Drive) / APK Update Link", fontSize = 10.sp) },
                             modifier = Modifier.fillMaxWidth(),
                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
                             singleLine = true
