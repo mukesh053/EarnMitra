@@ -1,0 +1,53 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- COIN SHADOW -->
+    <path
+        android:fillColor="#33000000"
+        android:pathData="M 56, 30 a 26,26 0 1,0 0.1,0 z" />
+
+    <!-- GOLD COIN BASE -->
+    <path
+        android:pathData="M 54, 28 a 26,26 0 1,0 0.1,0 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="28"
+                android:startY="28"
+                android:endX="80"
+                android:endY="80"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFE000" />
+                <item android:offset="0.5" android:color="#F7971E" />
+                <item android:offset="1.0" android:color="#FF4E50" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- INNER COIN RING -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.6"
+        android:fillColor="#00000000"
+        android:pathData="M 54, 33 a 21,21 0 1,0 0.1,0 z" />
+
+    <!-- STYLIZED RUPEE SYMBOL (₹) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 50 36 h 16 v 4.5 h -6.5 c 2.5 1.5 4 4 4 7 h 2.5 v 4.5 h -2.5 c -0.5 4 -3.5 7.5 -7.5 8.5 l 8 13.5 h -5.5 l -7.5 -13 h -1 v 13 h -4.5 v -25 h -4 v -4.5 h 4 z" />
+
+    <!-- TOP-RIGHT SPARKLE -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 76,26 L 77.5,30.5 L 82,32 L 77.5,33.5 L 76,38 L 74.5,33.5 L 70,32 L 74.5,30.5 Z" />
+
+    <!-- BOTTOM-LEFT SPARKLE -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M 32,70 L 33,73 L 36,74 L 33,75 L 32,78 L 31,75 L 28,74 L 31,73 Z" />
+
+</vector>

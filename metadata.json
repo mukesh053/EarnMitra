@@ -1,0 +1,6 @@
+{
+  "name": "EarnMitra",
+  "description": "Multi-level referral network and commission earning application. Register multiple times with your number, earn commission on referrals, promote products, track progress and request bank transfers offline or online.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
