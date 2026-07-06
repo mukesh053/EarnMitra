@@ -41,12 +41,17 @@ android {
 
   buildTypes {
     release {
-      isCrunchPngs = false
-      isMinifyEnabled = false
+      isCrunchPngs = true
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
+      isDebuggable = false
+      isMinifyEnabled = true
+      isShrinkResources = true
+      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("debugConfig")
     }
   }
@@ -115,7 +120,7 @@ dependencies {
   implementation(libs.play.app.update)
   implementation(libs.play.app.update.ktx)
   implementation(libs.play.services.code.scanner)
-  implementation(libs.barcode.scanning)
+  implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0")
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

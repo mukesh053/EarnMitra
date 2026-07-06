@@ -55,4 +55,13 @@ interface AppDao {
 
     @Update
     suspend fun updateOrder(order: Order)
+
+    @Query("DELETE FROM user_accounts WHERE uid = :uid")
+    suspend fun deleteUserByUid(uid: String)
+
+    @Delete
+    suspend fun deleteUser(user: UserAccount)
+
+    @Query("SELECT * FROM user_accounts WHERE paymentStatus = 'PENDING_VERIFICATION'")
+    suspend fun getPendingPaymentUsers(): List<UserAccount>
 }

@@ -36,6 +36,8 @@ data class UserAccount(
     val kycDocImage: String? = null, // Simulated uploaded document image (e.g. URI or mock text)
     val email: String = "",
     val password: String = "",
-    val authMethod: String = "OTP" // "OTP", "WHATSAPP", "GOOGLE", "EMAIL"
+    val authMethod: String = "OTP", // "OTP", "WHATSAPP", "GOOGLE", "EMAIL"
+    val pendingUtr: String = "", // Holds the UTR number submitted for admin approval
+    val paymentStatus: String = "NOT_PAID" // "NOT_PAID", "PENDING_VERIFICATION", "APPROVED", "REJECTED"
 )
 

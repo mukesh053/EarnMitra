@@ -142,18 +142,16 @@ class AppRepository(private val appDao: AppDao) {
         val user = appDao.getUserByUid(uid) ?: return false
         if (user.isActive) return true
 
-        // If user has a referrer, check if that referrer already has 3 active referrals
+        // If user has a referrer, we allow activation regardless of the limit to avoid trapping paid registrations
         val parentId = user.referredBy
-        if (parentId != null) {
-            val parentUser = appDao.getUserByUid(parentId)
-            if (parentUser != null && parentUser.directReferralsCount >= 3) {
-                return false
-            }
-        }
 
         // Set user as active
-        val activatedUser = user.copy(isActive = true)
-        appDao.updateUser(activatedUser)
+        val activatedUser = user.copy(
+            isActive = true,
+            paymentStatus = "APPROVED",
+            pendingUtr = utr.trim()
+        )
+        updateUser(activatedUser)
 
         val txDesc = if (utr.isNotBlank()) {
             "જોડાણ ફી ચુકવણી / Joining Fee Paid (UTR: ${utr.trim()})"
@@ -230,6 +228,54 @@ class AppRepository(private val appDao: AppDao) {
             currentLevel++
         }
 
+        return true
+    }
+
+    suspend fun submitJoiningFeeUtr(uid: String, utr: String): Boolean {
+        val user = appDao.getUserByUid(uid) ?: return false
+        val updatedUser = user.copy(
+            paymentStatus = "PENDING_VERIFICATION",
+            pendingUtr = utr.trim()
+        )
+        updateUser(updatedUser)
+
+        // Insert notification
+        val notification = AppNotification(
+            uid = uid,
+            title = "ચુકવણી વિનંતી સબમિટ! / Payment Submitted!",
+            message = "તમારી ₹૧,૦૦૦ ની ચુકવણી (UTR: ${utr.trim()}) ની ચકાસણી એડમિન દ્વારા થઈ રહી છે. / Your payment of ₹1,000 (UTR: ${utr.trim()}) is being verified by the admin.",
+            type = "DEPOSIT"
+        )
+        appDao.insertNotification(notification)
+        try {
+            FirebaseSyncService.saveNotificationToFirestore(notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return true
+    }
+
+    suspend fun rejectJoiningFeeUtr(uid: String): Boolean {
+        val user = appDao.getUserByUid(uid) ?: return false
+        val updatedUser = user.copy(
+            paymentStatus = "REJECTED",
+            pendingUtr = ""
+        )
+        updateUser(updatedUser)
+
+        // Insert notification
+        val notification = AppNotification(
+            uid = uid,
+            title = "ચુકવણી અસ્વીકાર! / Payment Rejected!",
+            message = "એડમિન દ્વારા તમારી ₹૧,૦૦૦ ની ચુકવણીની પુષ્ટિ થઈ શકી નથી. કૃપા કરીને સાચો UTR દાખલ કરો. / Admin could not verify your payment. Please enter a valid UTR number.",
+            type = "SYSTEM"
+        )
+        appDao.insertNotification(notification)
+        try {
+            FirebaseSyncService.saveNotificationToFirestore(notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         return true
     }
 
@@ -370,6 +416,10 @@ class AppRepository(private val appDao: AppDao) {
     }
 
     // --- DIRECT REFERRALS & NOTIFICATIONS ---
+    suspend fun getPendingPaymentUsers(): List<UserAccount> {
+        return appDao.getPendingPaymentUsers()
+    }
+
     suspend fun getReferralsForUser(uid: String): List<UserAccount> {
         return appDao.getAllUsers().filter { it.referredBy == uid }
     }

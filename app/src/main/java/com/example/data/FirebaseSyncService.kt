@@ -164,4 +164,48 @@ object FirebaseSyncService {
                 onComplete(null)
             }
     }
+
+    // Save update configuration to Cloud Firestore
+    fun saveUpdateConfigToFirestore(versionName: String, versionCode: Int, releaseNotes: String, driveUrl: String, onComplete: (Boolean) -> Unit = {}) {
+        val updateMap = hashMapOf(
+            "versionName" to versionName,
+            "versionCode" to versionCode.toLong(),
+            "releaseNotes" to releaseNotes,
+            "googleDriveUpdateUrl" to driveUrl,
+            "updatedAt" to System.currentTimeMillis()
+        )
+        firestore.collection("metadata")
+            .document("update_config")
+            .set(updateMap)
+            .addOnSuccessListener {
+                Log.d(TAG, "Update configuration successfully saved to Firestore!")
+                onComplete(true)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error saving update configuration to Firestore", e)
+                onComplete(false)
+            }
+    }
+
+    // Fetch update configuration from Cloud Firestore
+    fun fetchUpdateConfigFromFirestore(onComplete: (versionName: String?, versionCode: Int?, releaseNotes: String?, driveUrl: String?) -> Unit) {
+        firestore.collection("metadata")
+            .document("update_config")
+            .get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val versionName = document.getString("versionName")
+                    val versionCode = document.getLong("versionCode")?.toInt()
+                    val releaseNotes = document.getString("releaseNotes")
+                    val driveUrl = document.getString("googleDriveUpdateUrl")
+                    onComplete(versionName, versionCode, releaseNotes, driveUrl)
+                } else {
+                    onComplete(null, null, null, null)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error fetching update config from Firestore", e)
+                onComplete(null, null, null, null)
+            }
+    }
 }

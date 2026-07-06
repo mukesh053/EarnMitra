@@ -37,6 +37,21 @@
 
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8 max-w-xl flex-grow">
+
+        <!-- Sponsor Badge (Shown dynamically if ?ref is present) -->
+        <div id="sponsorBadge" class="hidden bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5 text-center mb-6 shadow-md transition-all duration-300 transform">
+            <div class="flex items-center justify-center gap-2 mb-2">
+                <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></div>
+                <i class="fa-solid fa-user-check text-emerald-600 text-lg"></i>
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">ખાસ આમંત્રણ લિંક સક્રિય / Invitation Active</span>
+            </div>
+            <p class="text-sm text-slate-700 leading-relaxed">
+                તમને એજન્ટ <strong id="sponsorId" class="text-emerald-700 font-bold text-base bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-200">EM10000</strong> દ્વારા આમંત્રિત કરવામાં આવ્યા છે. નોંધણી કરતી વખતે કૃપા કરીને આ એજન્ટ ID દાખલ કરો.
+            </p>
+            <p class="text-xs text-slate-500 mt-2">
+                You are invited by Agent <strong id="sponsorIdEn" class="text-emerald-700 font-bold">EM10000</strong>. Please use this Agent ID during registration.
+            </p>
+        </div>
         
         <!-- Hero Box -->
         <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 text-center mb-8">
@@ -48,11 +63,11 @@
             <p class="text-slate-500 text-sm mb-6">નીચે આપેલા લિંક પરથી ઓફિશિયલ APK ફાઇલ ડાઉનલોડ કરો અને ઘરે બેઠા કમાણી શરૂ કરો.</p>
             
             <!-- Download Button -->
-            <a href="./APK_DOWNLOAD/app-debug.apk" id="downloadBtn" class="accent-gradient text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-3 w-full mb-4">
+            <a href="./APK_DOWNLOAD/app-debug.apk?v=4.0mb" id="downloadBtn" class="accent-gradient text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-3 w-full mb-4">
                 <i class="fa-solid fa-cloud-arrow-down text-xl"></i>
                 ડાઉનલોડ કરો / Download App
             </a>
-            <p class="text-xs text-slate-400">ફાઇલ સાઇઝ: ~૫૧ MB | ૧૦૦% વાયરસ મુક્ત અને સુરક્ષિત</p>
+            <p class="text-xs text-slate-400">ફાઇલ સાઇઝ: ~૪.૦ MB | ૧૦૦% વાયરસ મુક્ત અને સુરક્ષિત</p>
         </div>
 
         <!-- Trust & Security Banner -->
@@ -188,6 +203,20 @@
             </p>
         </div>
     </footer>
+
+    <!-- JavaScript to parse ref parameter and show sponsor info -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const ref = urlParams.get('ref') || urlParams.get('r');
+            if (ref && ref.trim() !== "") {
+                const sponsorIdStr = ref.trim().toUpperCase();
+                document.getElementById('sponsorId').innerText = sponsorIdStr;
+                document.getElementById('sponsorIdEn').innerText = sponsorIdStr;
+                document.getElementById('sponsorBadge').classList.remove('hidden');
+            }
+        });
+    </script>
 
 </body>
 </html>

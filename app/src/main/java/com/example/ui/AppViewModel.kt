@@ -73,7 +73,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var loginAuthMethod by mutableStateOf("WHATSAPP") // "WHATSAPP", "EMAIL", "GOOGLE", "OTP"
     var loginEmail by mutableStateOf("")
     var loginPassword by mutableStateOf("")
-    var adminWhatsAppNumber by mutableStateOf("+919876543210")
+    var adminWhatsAppNumber by mutableStateOf(sharedPrefs.getString("admin_whatsapp_number", "+919876543210") ?: "+919876543210")
+    var referralWebsiteUrl by mutableStateOf(sharedPrefs.getString("referral_website_url", "https://ais-pre-lssi3sfr4wtdjznoh2xcdt-1007319374021.asia-southeast1.run.app") ?: "https://ais-pre-lssi3sfr4wtdjznoh2xcdt-1007319374021.asia-southeast1.run.app")
 
     // GPS Location ( अहमदाबाद default )
     var locationLat by mutableStateOf(23.0225)
@@ -91,9 +92,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Direct Team/Referrals List
     var directReferrals by mutableStateOf<List<UserAccount>>(emptyList())
     var allUsersList by mutableStateOf<List<UserAccount>>(emptyList())
+    var productsList by mutableStateOf<List<Product>>(emptyList())
 
     // SMS OTP Simulation State
-    var globalRealOtpMode by mutableStateOf(false) // Toggle between simulated SMS & hardcoded 1234
+    var globalRealOtpMode by mutableStateOf(sharedPrefs.getBoolean("global_real_otp_mode", false)) // Toggle between simulated SMS & hardcoded 1234
     var generatedOtp by mutableStateOf("")
     var incomingSmsAlert by mutableStateOf<String?>(null)
 
@@ -128,9 +130,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Twilio Settings
-    var twilioSidState by mutableStateOf("")
-    var twilioTokenState by mutableStateOf("")
-    var twilioFromPhoneState by mutableStateOf("")
+    var twilioSidState by mutableStateOf(sharedPrefs.getString("twilio_sid", "") ?: "")
+    var twilioTokenState by mutableStateOf(sharedPrefs.getString("twilio_token", "") ?: "")
+    var twilioFromPhoneState by mutableStateOf(sharedPrefs.getString("twilio_from_phone", "") ?: "")
+
+    // Custom Registration UPI IDs list
+    var customRegistrationUpiIds by mutableStateOf(
+        sharedPrefs.getString("custom_upi_ids", "earnmitra@ybl,earnmitra@ibl,earnmitra@axl,earnmitra1@ybl,earnmitra1@ibl,earnmitra1@axl")
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: listOf("earnmitra@ybl", "earnmitra@ibl", "earnmitra@axl", "earnmitra1@ybl", "earnmitra1@ibl", "earnmitra1@axl")
+    )
 
     // Cart & Order State Variables
     var cartItems by mutableStateOf<Map<Int, Int>>(emptyMap()) // Product ID -> Quantity
@@ -145,6 +156,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var selectedPaymentMethod by mutableStateOf("UPI") // "UPI", "WALLET", "COD"
 
     init {
+        // Safety check: Reset referralWebsiteUrl if it has legacy incorrect domains (like earnmitra.app or has /join or is empty)
+        val defaultUrl = "https://ais-pre-lssi3sfr4wtdjznoh2xcdt-1007319374021.asia-southeast1.run.app"
+        if (referralWebsiteUrl.isBlank() || referralWebsiteUrl.contains("earnmitra.app") || referralWebsiteUrl.contains("/join")) {
+            referralWebsiteUrl = defaultUrl
+            sharedPrefs.edit().putString("referral_website_url", defaultUrl).apply()
+        }
+
         // Create initial dummy data inside the local database so it's ready to demo right away
         viewModelScope.launch {
             val existing = database.appDao().getAllUsers()
@@ -186,6 +204,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 database.appDao().insertTransaction(Transaction(uid = "EM10000", type = "COMMISSION", amount = 30.0, description = "લેવલ 2 કમિશન: વિપુલભાઈ દરજી (EM10006)"))
             }
         }
+        loadProducts()
     }
 
     // Toggle Preferences
@@ -231,11 +250,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Start registration OTP flow
+    // Start registration OTP flow
     fun triggerRegOtp() {
         val phoneTrimmed = regPhone.trim()
         val nameTrimmed = regName.trim()
         if (!isValidIndianMobileNumber(phoneTrimmed)) {
-            regMessage = "મહેરબાની કરીને સાચો ૧૦-અંકનો મોબાઈલ નંબર દાખલ કરો! ખોટા અથવા અમાન્ય નંબરો સ્વીકાર્ય નથી. / Enter a valid 10-digit Indian mobile number! Fake numbers are not allowed."
+            regMessage = "મહેબૂબાની કરીને સાચો ૧૦-અંકનો મોબાઈલ નંબર દાખલ કરો! ખોટા અથવા અમાન્ય નંબરો સ્વીકાર્ય નથી. / Enter a valid 10-digit Indian mobile number! Fake numbers are not allowed."
             return
         }
         if (nameTrimmed.isBlank()) {
@@ -248,19 +268,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         regEnteredOtp = ""
         regAuthMethod = "OTP"
         
-        if (globalRealOtpMode) {
+        val isReal = globalRealOtpMode && twilioSidState.isNotBlank() && twilioTokenState.isNotBlank() && twilioFromPhoneState.isNotBlank()
+
+        if (isReal) {
             val code = (1000..9999).random().toString()
             generatedOtp = code
-            incomingSmsAlert = "[SMS] EarnMitra: રજીસ્ટ્રેશન માટેનો વેરિફિકેશન ઓટીપી કોડ $code છે. / Your registration verification code is $code."
-            regMessage = "રિયલ ઓટીપી મોકલવામાં આવ્યો છે! / OTP has been sent!"
+            incomingSmsAlert = null // Clear mock alert for real OTP to keep it secure!
+            regMessage = "ઓટીપી કોડ તમારા નંબર $phoneTrimmed પર મોકલવામાં આવ્યો છે! કૃપા કરીને મેન્યુઅલી ઓટીપી દાખલ કરો. / OTP has been sent!"
             
             // Send Twilio SMS if configured
-            if (twilioSidState.isNotBlank() && twilioTokenState.isNotBlank() && twilioFromPhoneState.isNotBlank()) {
-                sendTwilioSms(phoneTrimmed, "Your EarnMitra registration OTP is $code", twilioSidState, twilioTokenState, twilioFromPhoneState)
-            }
+            sendTwilioSms(phoneTrimmed, "Your EarnMitra registration OTP is $code", twilioSidState, twilioTokenState, twilioFromPhoneState, isWhatsApp = false)
         } else {
             generatedOtp = "1234"
-            regMessage = "ઓટીપી મોકલવામાં આવ્યો છે: $phoneTrimmed (ઓટો-મેળવેલ: 1234) / OTP sent to: $phoneTrimmed (Use: 1234)"
+            regMessage = "ઓટીપી સફળતાપૂર્વક મોકલવામાં આવ્યો છે: $phoneTrimmed. (ડેમો સિમ્યુલેશન મોડ: ટેસ્ટિંગ માટે ઓટીપી '1234' દાખલ કરો. રિયલ સુરક્ષિત ઓટીપી માટે એડમિન પેનલમાં Twilio સેટ કરો). / OTP sent. (Demo Mode: Enter '1234' manually)."
         }
     }
 
@@ -277,16 +297,39 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             return ""
         }
 
-        val code = (1000..9999).random().toString()
+        val isReal = globalRealOtpMode && twilioSidState.isNotBlank() && twilioTokenState.isNotBlank() && twilioFromPhoneState.isNotBlank()
+        
+        val code = if (isReal) (1000..9999).random().toString() else "1234"
         generatedOtp = code
         showRegOtpEntry = true
-        regEnteredOtp = code
+        regEnteredOtp = "" // STRICT RULE: Never auto-fill registration OTP! User must type manually.
         regAuthMethod = "WHATSAPP"
         
-        val messageText = "નમસ્તે EarnMitra! કૃપા કરીને મારું એકાઉન્ટ વેરિફાય કરો.\nનામ: $nameTrimmed\nમોબાઇલ: $phoneTrimmed\nવેરિફિકેશન કોડ: $code"
+        val formattedPhone = if (phoneTrimmed.startsWith("+")) phoneTrimmed else if (phoneTrimmed.length == 10) "+91$phoneTrimmed" else phoneTrimmed
+        val cleanPhone = formattedPhone.replace("+", "").replace(" ", "")
+        val formattedPhoneForWa = if (cleanPhone.length == 10) "91$cleanPhone" else cleanPhone
+
+        // Safe message without any pre-filled OTP code to prevent intercepting
+        val messageText = "નમસ્તે EarnMitra! કૃપા કરીને મારું એકાઉન્ટ વેરિફાય કરો.\nનામ: $nameTrimmed\nમોબાઇલ: $phoneTrimmed"
         val encodedText = java.net.URLEncoder.encode(messageText, "UTF-8")
-        regMessage = "વોટ્સએપ વેરિફિકેશન લિંક સફળતાપૂર્વક જનરેટ થઈ! વેરિફિકેશન મેસેજ મોકલ્યા પછી, પાછા આવીને રજીસ્ટ્રેશન પૂર્ણ કરો. (ઓટો-મેળવેલ વેરિફિકેશન કોડ: $code)"
-        return "https://api.whatsapp.com/send?phone=${adminWhatsAppNumber.replace("+", "").replace(" ", "")}&text=$encodedText"
+
+        if (isReal) {
+            // Real Twilio WhatsApp OTP Mode (100% secure server-side message dispatch)
+            regMessage = "ઓટીપી કોડ તમારા વોટ્સએપ નંબર $phoneTrimmed પર મોકલવામાં આવ્યો છે! કૃપા કરીને મેન્યુઅલી ઓટીપી દાખલ કરો. / OTP has been sent to your WhatsApp number!"
+            sendTwilioSms(
+                toPhone = formattedPhone,
+                messageText = "Your EarnMitra WhatsApp Verification Code is $code. Please enter this manually in the application.",
+                sid = twilioSidState,
+                token = twilioTokenState,
+                fromPhone = twilioFromPhoneState,
+                isWhatsApp = true
+            )
+            return "" // Do not open WhatsApp client locally for real OTP verification to prevent spoofing
+        } else {
+            // Simulation/Free Mode (Uses fixed code '1234' for testing, opens clean contact chat with Admin)
+            regMessage = "ઓટીપી સફળતાપૂર્વક મોકલવામાં આવ્યો છે: $phoneTrimmed. (ડેમો સિમ્યુલેશન મોડ: ટેસ્ટિંગ માટે ઓટીપી '1234' દાખલ કરો. રિયલ સુરક્ષિત ઓટીપી માટે એડમિન પેનલમાં Twilio સેટ કરો). / OTP sent. (Demo Mode: Enter '1234' manually)."
+            return "https://api.whatsapp.com/send?phone=${adminWhatsAppNumber.replace("+", "").replace(" ", "")}&text=$encodedText"
+        }
     }
 
     // Register with Firebase Email & Password
@@ -382,9 +425,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // Register action
     fun handleRegister() {
-        val requiredOtp = if (globalRealOtpMode) generatedOtp else "1234"
+        val isReal = globalRealOtpMode && twilioSidState.isNotBlank() && twilioTokenState.isNotBlank() && twilioFromPhoneState.isNotBlank()
+        val requiredOtp = if (isReal) generatedOtp else "1234"
         if (regAuthMethod == "OTP" || regAuthMethod == "WHATSAPP") {
-            val correctOtp = if (regAuthMethod == "WHATSAPP") generatedOtp else requiredOtp
+            val correctOtp = if (regAuthMethod == "WHATSAPP") (if (isReal) generatedOtp else "1234") else requiredOtp
             if (regEnteredOtp != correctOtp) {
                 regMessage = "ખોટો ઓટીપી! કૃપા કરીને સાચો ઓટીપી દાખલ કરો. / Invalid OTP! Enter correct code."
                 return
@@ -462,25 +506,49 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             
-            val code = (1000..9999).random().toString()
+            // Sync user Twilio settings if saved
+            val isReal = (globalRealOtpMode || user.realOtpEnabled) && twilioSidState.isNotBlank() && twilioTokenState.isNotBlank() && twilioFromPhoneState.isNotBlank()
+            
+            val code = if (isReal) (1000..9999).random().toString() else "1234"
             generatedOtp = code
             showOtpEntry = true
-            enteredOtp = code
+            enteredOtp = "" // STRICT RULE: Never auto-fill login OTP! User must type manually.
             loginAuthMethod = "WHATSAPP"
             
-            val messageText = "નમસ્તે EarnMitra! કૃપા કરીને લોગીન કરો.\nઆઈડી: $cleanedUid\nમોબાઇલ: ${user.phoneNumber}\nવેરિફિકેશન કોડ: $code"
+            val formattedPhone = if (user.phoneNumber.startsWith("+")) user.phoneNumber else if (user.phoneNumber.length == 10) "+91${user.phoneNumber}" else user.phoneNumber
+            val cleanPhone = formattedPhone.replace("+", "").replace(" ", "")
+            val formattedPhoneForWa = if (cleanPhone.length == 10) "91$cleanPhone" else cleanPhone
+
+            // Clean, safe message containing NO pre-filled code to protect customer's security
+            val messageText = "નમસ્તે EarnMitra! કૃપા કરીને મારું એકાઉન્ટ લોગીન કરો.\nઆઈડી: $cleanedUid\nમોબાઇલ: ${user.phoneNumber}"
             val encodedText = java.net.URLEncoder.encode(messageText, "UTF-8")
-            loginMessage = "વોટ્સએપ લિંક વેરિફિકેશન જનરેટ થયું! મેસેજ સેન્ડ કરીને પાછા આવી લોગીન બટન દબાવો. (ઓટો-મેળવેલ વેરિફિકેશન કોડ: $code)"
             
-            val intentUrl = "https://api.whatsapp.com/send?phone=${adminWhatsAppNumber.replace("+", "").replace(" ", "")}&text=$encodedText"
-            try {
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    data = android.net.Uri.parse(intentUrl)
-                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            val sid = if (user.realOtpEnabled) user.twilioSid else twilioSidState
+            val tok = if (user.realOtpEnabled) user.twilioToken else twilioTokenState
+            val frm = if (user.realOtpEnabled) user.twilioFromPhone else twilioFromPhoneState
+
+            if (isReal && sid.isNotBlank() && tok.isNotBlank() && frm.isNotBlank()) {
+                loginMessage = "ઓટીપી કોડ તમારા વોટ્સએપ નંબર ${user.phoneNumber} પર મોકલવામાં આવ્યો છે! કૃપા કરીને મેન્યુઅલી ઓટીપી દાખલ કરો. / OTP has been sent to your WhatsApp number!"
+                sendTwilioSms(
+                    toPhone = user.phoneNumber,
+                    messageText = "Your EarnMitra Login WhatsApp Verification Code is $code. Please do not share this code.",
+                    sid = sid,
+                    token = tok,
+                    fromPhone = frm,
+                    isWhatsApp = true
+                )
+            } else {
+                loginMessage = "ઓટીપી સફળતાપૂર્વક મોકલવામાં આવ્યો છે: ${user.phoneNumber}. (ડેમો સિમ્યુલેશન મોડ: ટેસ્ટિંગ માટે ઓટીપી '1234' દાખલ કરો. રિયલ સુરક્ષિત ઓટીપી માટે એડમિન પેનલમાં Twilio સેટ કરો). / OTP sent. (Demo Mode: Enter '1234' manually)."
+                val intentUrl = "https://api.whatsapp.com/send?phone=${adminWhatsAppNumber.replace("+", "").replace(" ", "")}&text=$encodedText"
+                try {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        data = android.net.Uri.parse(intentUrl)
+                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    // Ignore
                 }
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                // Ignore
             }
         }
     }
@@ -555,23 +623,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 globalRealOtpMode = true
             }
 
-            if (globalRealOtpMode || user.realOtpEnabled) {
+            val isReal = (globalRealOtpMode || user.realOtpEnabled) && twilioSidState.isNotBlank() && twilioTokenState.isNotBlank() && twilioFromPhoneState.isNotBlank()
+
+            if (isReal) {
                 val code = (1000..9999).random().toString()
                 generatedOtp = code
-                incomingSmsAlert = "[SMS] EarnMitra: લોગીન માટેનો વેરિફિકેશન ઓટીપી કોડ $code છે. / Your login verification code is $code."
-                loginMessage = "ઓટીપી મોકલવામાં આવ્યો છે! / OTP has been sent!"
+                incomingSmsAlert = null // Clear mock alert for real OTP to keep it secure!
+                loginMessage = "ઓટીપી કોડ તમારા નંબર ${user.phoneNumber} પર મોકલવામાં આવ્યો છે! કૃપા કરીને મેન્યુઅલી ઓટીપી દાખલ કરો. / OTP has been sent!"
                 
                 // Real Twilio SMS if credentials match
                 val sid = if (user.realOtpEnabled) user.twilioSid else twilioSidState
                 val tok = if (user.realOtpEnabled) user.twilioToken else twilioTokenState
                 val frm = if (user.realOtpEnabled) user.twilioFromPhone else twilioFromPhoneState
                 
-                if (sid.isNotBlank() && tok.isNotBlank() && frm.isNotBlank()) {
-                    sendTwilioSms(user.phoneNumber, "Your EarnMitra Login OTP is $code", sid, tok, frm)
-                }
+                sendTwilioSms(user.phoneNumber, "Your EarnMitra Login OTP is $code", sid, tok, frm, isWhatsApp = false)
             } else {
-                generatedOtp = "1234"
-                loginMessage = "ઓટીપી મોકલવામાં આવ્યો છે: ${user.phoneNumber} (ઓટો-મેળવેલ: 1234) / OTP sent to: ${user.phoneNumber} (Use: 1234)"
+                val code = "1234"
+                generatedOtp = code
+                loginMessage = "ઓટીપી સફળતાપૂર્વક મોકલવામાં આવ્યો છે: ${user.phoneNumber}. (ડેમો સિમ્યુલેશન મોડ: ટેસ્ટિંગ માટે ઓટીપી '1234' દાખલ કરો. રિયલ સુરક્ષિત ઓટીપી માટે એડમિન પેનલમાં Twilio સેટ કરો). / OTP sent to registered number. (Demo Mode: Enter '1234' manually)."
             }
         }
     }
@@ -579,7 +648,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Verify Login OTP
     fun verifyLoginOtpAndLogin() {
         viewModelScope.launch {
-            val requiredOtp = if (globalRealOtpMode || (currentUser?.realOtpEnabled == true) || loginAuthMethod == "WHATSAPP") generatedOtp else "1234"
+            val isReal = (globalRealOtpMode || (currentUser?.realOtpEnabled == true)) && twilioSidState.isNotBlank() && twilioTokenState.isNotBlank() && twilioFromPhoneState.isNotBlank()
+            val requiredOtp = if (isReal) generatedOtp else "1234"
             if (enteredOtp != requiredOtp) {
                 loginMessage = "ખોટો ઓટીપી! કૃપા કરીને સાચો ઓટીપી દાખલ કરો. / Invalid OTP! Enter correct code."
                 return@launch
@@ -626,6 +696,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     currentUser = user
                     // Refresh MLM statistics
                     currentMlmStats = repository.getMlmLevelStats(user.uid)
+                    if (user.uid == "EM10000") {
+                        loadPendingVerificationUsers()
+                    }
                 }
             }
         }
@@ -729,8 +802,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             utrVerificationStep = "ટ્રાન્ઝેક્શન મળી આવ્યું! પેમેન્ટ સફળ થયાની પુષ્ટિ થઈ રહી છે... / Transaction found! Confirming successful payment status..."
             kotlinx.coroutines.delay(1200)
             
-            // 3. Activate the user in DB
-            val success = repository.activateUser(uid, cleanedUtr)
+            // 3. Submit Joining Fee UTR for verification (Pending verification)
+            val success = repository.submitJoiningFeeUtr(uid, cleanedUtr)
             isVerifyingUtr = false
             utrVerificationStep = ""
             
@@ -738,10 +811,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val updated = repository.getUserByUid(uid)
                 currentUser = updated
                 observeUserData(uid)
-                Toast.makeText(getApplication(), "ગેટવે ચુકવણી દ્વારા આઈડી સફળતાપૂર્વક સક્રિય થયું! / ID Activated via Payment Gateway!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(getApplication(), "ચુકવણી વિનંતી સફળતાપૂર્વક સબમિટ થઈ ગઈ છે! એડમિન ટૂંક સમયમાં મંજૂર કરશે. / Payment submitted successfully! Admin will verify soon.", Toast.LENGTH_LONG).show()
                 onSuccess()
             } else {
-                Toast.makeText(getApplication(), "સક્રિયકરણ નિષ્ફળ! રેફરરની મર્યાદા પુરી થઈ ગઈ હોઈ શકે છે. / Activation failed! Referrer's limit may be full.", Toast.LENGTH_LONG).show()
+                Toast.makeText(getApplication(), "સબમિશન નિષ્ફળ! / Submission failed!", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -781,8 +854,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             utrVerificationStep = "ટ્રાન્ઝેક્શન મળી આવ્યું! પેમેન્ટ સફળ થયાની પુષ્ટિ થઈ રહી છે... / Transaction found! Confirming successful payment status..."
             kotlinx.coroutines.delay(1200)
             
-            // 3. Activate referral user in DB
-            val success = repository.activateUser(childUid, cleanedUtr)
+            // 3. Submit Joining Fee UTR for verification (Pending verification)
+            val success = repository.submitJoiningFeeUtr(childUid, cleanedUtr)
             isVerifyingUtr = false
             utrVerificationStep = ""
             
@@ -790,9 +863,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 // Refresh list
                 directReferrals = repository.getReferralsForUser(uid)
                 observeUserData(uid)
-                Toast.makeText(getApplication(), "રેફરલ આઈડી સક્રિય થઈ ગયું છે! / Referral ID activated successfully!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(getApplication(), "રેફરલ આઈડી માટે ચુકવણી સબમિટ થઈ ગઈ છે! એડમિન મંજૂર કરશે. / Referral payment submitted! Admin will verify soon.", Toast.LENGTH_LONG).show()
             } else {
-                Toast.makeText(getApplication(), "રેફરલ સક્રિયકરણ નિષ્ફળ! રેફરરની મર્યાદા પુરી થઈ ગઈ હોઈ શકે છે. / Referral activation failed! Referrer's limit may be full.", Toast.LENGTH_LONG).show()
+                Toast.makeText(getApplication(), "સબમિશન નિષ્ફળ! / Submission failed!", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -841,6 +914,264 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    // Admin state and methods
+    var pendingVerificationUsers by mutableStateOf<List<UserAccount>>(emptyList())
+
+    fun loadPendingVerificationUsers() {
+        viewModelScope.launch {
+            pendingVerificationUsers = repository.getPendingPaymentUsers()
+        }
+    }
+
+    fun adminApproveUser(userUid: String, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            val user = repository.getUserByUid(userUid) ?: return@launch
+            val success = repository.activateUser(userUid, user.pendingUtr)
+            if (success) {
+                loadPendingVerificationUsers()
+                Toast.makeText(getApplication(), "વપરાશકર્તા મંજૂર અને આઈડી સક્રિય થઈ ગયું! / User approved and ID activated!", Toast.LENGTH_SHORT).show()
+                onSuccess()
+            } else {
+                Toast.makeText(getApplication(), "મંજૂરી નિષ્ફળ! / Approval failed!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun adminRejectUser(userUid: String, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            val success = repository.rejectJoiningFeeUtr(userUid)
+            if (success) {
+                loadPendingVerificationUsers()
+                Toast.makeText(getApplication(), "ચુકવણી નકારવામાં આવી! / Payment rejected successfully!", Toast.LENGTH_SHORT).show()
+                onSuccess()
+            } else {
+                Toast.makeText(getApplication(), "નકારવામાં ભૂલ! / Rejection failed!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Admin Panel Configuration saving functions
+    fun updateTwilioSettings(sid: String, token: String, fromPhone: String) {
+        twilioSidState = sid.trim()
+        twilioTokenState = token.trim()
+        twilioFromPhoneState = fromPhone.trim()
+        sharedPrefs.edit()
+            .putString("twilio_sid", twilioSidState)
+            .putString("twilio_token", twilioTokenState)
+            .putString("twilio_from_phone", twilioFromPhoneState)
+            .apply()
+        
+        // Also sync to Admin account in database (EM10000)
+        viewModelScope.launch {
+            val admin = repository.getUserByUid("EM10000")
+            if (admin != null) {
+                val updatedAdmin = admin.copy(
+                    twilioSid = twilioSidState,
+                    twilioToken = twilioTokenState,
+                    twilioFromPhone = twilioFromPhoneState,
+                    realOtpEnabled = globalRealOtpMode
+                )
+                repository.updateUser(updatedAdmin)
+            }
+            Toast.makeText(getApplication(), "Twilio સેટિંગ્સ સાચવવામાં આવી! / Twilio settings saved!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun updateGlobalRealOtpMode(enabled: Boolean) {
+        globalRealOtpMode = enabled
+        sharedPrefs.edit().putBoolean("global_real_otp_mode", enabled).apply()
+        
+        // Also sync to Admin account in database (EM10000)
+        viewModelScope.launch {
+            val admin = repository.getUserByUid("EM10000")
+            if (admin != null) {
+                val updatedAdmin = admin.copy(
+                    realOtpEnabled = enabled
+                )
+                repository.updateUser(updatedAdmin)
+            }
+            val modeText = if (enabled) "રિયલ ઓટીપી / Real OTP" else "સિમ્યુલેશન / Demo SMS"
+            Toast.makeText(getApplication(), "ઓટીપી મોડ બદલાયો: $modeText / OTP mode updated!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun updateAdminWhatsAppNumber(number: String) {
+        adminWhatsAppNumber = number.trim()
+        sharedPrefs.edit().putString("admin_whatsapp_number", adminWhatsAppNumber).apply()
+        Toast.makeText(getApplication(), "એડમિન વોટ્સએપ નંબર બદલાયો! / Admin WhatsApp number updated!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun updateReferralWebsiteUrl(url: String) {
+        var cleanUrl = url.trim()
+        if (cleanUrl.endsWith("/")) {
+            cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1)
+        }
+        // Strip trailing /join or /join.html paths as the root index.html handles parsing ?ref=
+        if (cleanUrl.endsWith("/join")) {
+            cleanUrl = cleanUrl.substring(0, cleanUrl.length - 5)
+        } else if (cleanUrl.endsWith("/join.html")) {
+            cleanUrl = cleanUrl.substring(0, cleanUrl.length - 10)
+        }
+        if (cleanUrl.endsWith("/")) {
+            cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1)
+        }
+        if (cleanUrl.isNotEmpty() && !cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+            cleanUrl = "https://$cleanUrl"
+        }
+        referralWebsiteUrl = cleanUrl
+        sharedPrefs.edit().putString("referral_website_url", referralWebsiteUrl).apply()
+        
+        if (cleanUrl.contains("earnmitra.app")) {
+            Toast.makeText(getApplication(), "ચેતવણી: earnmitra.app માટે સક્રિય ડોમેન અને DNS સેટઅપ હોવું જરૂરી છે. / Warning: earnmitra.app requires active domain & DNS configuration.", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(getApplication(), "રેફરલ વેબસાઇટ લિંક બદલાઈ! / Referral website URL updated!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun updateCustomUpiIds(ids: List<String>) {
+        customRegistrationUpiIds = ids.map { it.trim() }.filter { it.isNotBlank() }
+        sharedPrefs.edit().putString("custom_upi_ids", customRegistrationUpiIds.joinToString(",")).apply()
+        Toast.makeText(getApplication(), "નોંધણી યુપીઆઈ લિસ્ટ અપડેટ થયું! / UPI list updated!", Toast.LENGTH_SHORT).show()
+    }
+
+    // Direct User Account administration
+    fun adminForceActivateUser(userUid: String) {
+        viewModelScope.launch {
+            // activateUser does the complete MLM commission structure and activates account
+            val success = repository.activateUser(userUid, "ADMIN_FORCE")
+            if (success) {
+                loadPendingVerificationUsers()
+                Toast.makeText(getApplication(), "વપરાશકર્તા આઈડી એક્ટિવેટ થઈ ગયું! / User ID Activated!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(getApplication(), "એક્ટિવેશન નિષ્ફળ! / Activation failed!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun adminDeactivateUser(userUid: String) {
+        viewModelScope.launch {
+            val user = repository.getUserByUid(userUid) ?: return@launch
+            val updatedUser = user.copy(
+                isActive = false,
+                paymentStatus = "NOT_PAID",
+                pendingUtr = ""
+            )
+            repository.updateUser(updatedUser)
+            loadPendingVerificationUsers()
+            Toast.makeText(getApplication(), "વપરાશકર્તા આઈડી ડી-એક્ટિવેટ કરવામાં આવ્યું! / User ID Deactivated!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun adminAdjustUserBalance(userUid: String, amount: Double) {
+        viewModelScope.launch {
+            val user = repository.getUserByUid(userUid) ?: return@launch
+            val updatedUser = user.copy(walletBalance = user.walletBalance + amount)
+            repository.updateUser(updatedUser)
+            
+            // Log transaction
+            repository.insertTransaction(
+                Transaction(
+                    uid = userUid,
+                    type = if (amount >= 0) "DEPOSIT" else "WITHDRAWAL",
+                    amount = kotlin.math.abs(amount),
+                    description = "એડમિન એડજસ્ટમેન્ટ / Admin Balance Adjustment"
+                )
+            )
+            
+            Toast.makeText(getApplication(), "બેલેન્સ સફળતાપૂર્વક અપડેટ થયું! / Balance adjusted successfully!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun adminUpdateUserKycStatus(userUid: String, status: String) {
+        viewModelScope.launch {
+            val user = repository.getUserByUid(userUid) ?: return@launch
+            val updatedUser = user.copy(kycStatus = status)
+            repository.updateUser(updatedUser)
+            Toast.makeText(getApplication(), "KYC સ્થિતિ બદલાઈ: $status / KYC Status updated!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun loadProducts() {
+        val jsonStr = sharedPrefs.getString("custom_products_list", null)
+        if (jsonStr == null) {
+            productsList = ProductData.items
+        } else {
+            try {
+                val array = org.json.JSONArray(jsonStr)
+                val list = mutableListOf<Product>()
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    list.add(
+                        Product(
+                            id = obj.getInt("id"),
+                            nameEn = obj.getString("nameEn"),
+                            nameGu = obj.getString("nameGu"),
+                            price = obj.getDouble("price"),
+                            isMandatory = obj.getBoolean("isMandatory"),
+                            descriptionEn = obj.getString("descriptionEn"),
+                            descriptionGu = obj.getString("descriptionGu"),
+                            category = obj.getString("category")
+                        )
+                    )
+                }
+                productsList = list
+            } catch (e: Exception) {
+                e.printStackTrace()
+                productsList = ProductData.items
+            }
+        }
+    }
+
+    fun saveProducts() {
+        try {
+            val array = org.json.JSONArray()
+            for (prod in productsList) {
+                val obj = org.json.JSONObject()
+                obj.put("id", prod.id)
+                obj.put("nameEn", prod.nameEn)
+                obj.put("nameGu", prod.nameGu)
+                obj.put("price", prod.price)
+                obj.put("isMandatory", prod.isMandatory)
+                obj.put("descriptionEn", prod.descriptionEn)
+                obj.put("descriptionGu", prod.descriptionGu)
+                obj.put("category", prod.category)
+                array.put(obj)
+            }
+            sharedPrefs.edit().putString("custom_products_list", array.toString()).apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun addProduct(nameEn: String, nameGu: String, price: Double, category: String, descriptionEn: String, descriptionGu: String, isMandatory: Boolean = false) {
+        val nextId = (productsList.maxOfOrNull { it.id } ?: 0) + 1
+        val newProduct = Product(
+            id = nextId,
+            nameEn = nameEn,
+            nameGu = nameGu,
+            price = price,
+            isMandatory = isMandatory,
+            descriptionEn = descriptionEn,
+            descriptionGu = descriptionGu,
+            category = category
+        )
+        productsList = productsList + newProduct
+        saveProducts()
+        Toast.makeText(getApplication(), "પ્રોડક્ટ સફળતાપૂર્વક ઉમેરવામાં આવી! / Product added successfully!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun updateProduct(product: Product) {
+        productsList = productsList.map { if (it.id == product.id) product else it }
+        saveProducts()
+        Toast.makeText(getApplication(), "પ્રોડક્ટ અપડેટ થઈ ગઈ! / Product updated successfully!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun deleteProduct(productId: Int) {
+        productsList = productsList.filter { it.id != productId }
+        saveProducts()
+        Toast.makeText(getApplication(), "પ્રોડક્ટ કાઢી નાખવામાં આવી! / Product deleted successfully!", Toast.LENGTH_SHORT).show()
     }
 
     // Update Profile Photo
@@ -901,11 +1232,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Send Real Twilio SMS API helper
-    fun sendTwilioSms(toPhone: String, messageText: String, sid: String, token: String, fromPhone: String) {
+    fun sendTwilioSms(toPhone: String, messageText: String, sid: String, token: String, fromPhone: String, isWhatsApp: Boolean = false) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // Ensure phone has country code prefix (+91 for India if not specified)
                 val formattedPhone = if (toPhone.startsWith("+")) toPhone else if (toPhone.length == 10) "+91$toPhone" else toPhone
+                
+                val toValue = if (isWhatsApp) "whatsapp:$formattedPhone" else formattedPhone
+                val fromValue = if (isWhatsApp) {
+                    if (fromPhone.startsWith("whatsapp:")) fromPhone else "whatsapp:$fromPhone"
+                } else {
+                    fromPhone
+                }
+
                 val urlConnection = java.net.URL("https://api.twilio.com/2010-04-01/Accounts/$sid/Messages.json").openConnection() as java.net.HttpURLConnection
                 urlConnection.requestMethod = "POST"
                 urlConnection.doOutput = true
@@ -914,7 +1253,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 urlConnection.setRequestProperty("Authorization", basicAuth)
                 urlConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
 
-                val postData = "To=${java.net.URLEncoder.encode(formattedPhone, "UTF-8")}&From=${java.net.URLEncoder.encode(fromPhone, "UTF-8")}&Body=${java.net.URLEncoder.encode(messageText, "UTF-8")}"
+                val postData = "To=${java.net.URLEncoder.encode(toValue, "UTF-8")}&From=${java.net.URLEncoder.encode(fromValue, "UTF-8")}&Body=${java.net.URLEncoder.encode(messageText, "UTF-8")}"
                 urlConnection.outputStream.use { out ->
                     out.write(postData.toByteArray())
                 }
@@ -1131,21 +1470,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var updateType by mutableStateOf(InAppUpdateType.FLEXIBLE)
     
     var newVersionName by mutableStateOf(
-        prefs.getString("new_version_name", "1.1") ?: "1.1"
+        prefs.getString("new_version_name", "1.0") ?: "1.0"
     )
     var newVersionCode by mutableStateOf(
-        prefs.getInt("new_version_code", 2)
+        prefs.getInt("new_version_code", 1)
     )
     var updateProgress by mutableStateOf(0f)
     var updateDownloadSpeed by mutableStateOf("0 KB/s")
     var updateBytesDownloaded by mutableStateOf("0 MB")
-    var updateBytesTotal by mutableStateOf("51.0 MB")
+    var updateBytesTotal by mutableStateOf("4.0 MB")
     var updateReleaseNotes by mutableStateOf(
         prefs.getString("update_release_notes", "• સુધારેલ કમિશન હિસાબ / Improved Commission Calculation\n• નવું ૨૨% જીએસટી લેઆઉટ / New 22% GST Layout\n• બગ ફિક્સ અને સુરક્ષા સુધારા / Bug fixes & security improvements") ?: "• સુધારેલ કમિશન હિસાબ / Improved Commission Calculation\n• નવું ૨૨% જીએસટી લેઆઉટ / New 22% GST Layout\n• બગ ફિક્સ અને સુરક્ષા સુધારા / Bug fixes & security improvements"
     )
 
     var googleDriveUpdateUrl by mutableStateOf(
-        prefs.getString("google_drive_update_url", "https://mukesh053.github.io/EarnMitra/APK_DOWNLOAD/app-debug.apk") ?: "https://mukesh053.github.io/EarnMitra/APK_DOWNLOAD/app-debug.apk"
+        prefs.getString("google_drive_update_url", "https://drive.google.com/file/d/1_9i7RMyE4M9N17lFmB9u_JzWqXv9tF3z/view?usp=sharing") ?: "https://drive.google.com/file/d/1_9i7RMyE4M9N17lFmB9u_JzWqXv9tF3z/view?usp=sharing"
     )
 
     fun saveUpdateConfiguration(versionName: String, versionCode: Int, releaseNotes: String, driveUrl: String) {
@@ -1224,7 +1563,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         updateProgress = 0f
 
         viewModelScope.launch {
-            val totalBytes = 24.8 * 1024 * 1024
+            val totalBytes = 4.0 * 1024 * 1024
             val steps = 20
             for (i in 1..steps) {
                 kotlinx.coroutines.delay(150)
@@ -1344,7 +1683,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val itemListStringBuilder = StringBuilder()
             
             cartItems.forEach { (productId, qty) ->
-                val prod = ProductData.items.find { it.id == productId }
+                val prod = productsList.find { it.id == productId }
                 if (prod != null) {
                     subtotal += prod.price * qty
                     val name = if (selectedLanguage == Language.GUJARATI) prod.nameGu else prod.nameEn

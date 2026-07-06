@@ -1091,6 +1091,7 @@ fun PendingPaymentScreen(viewModel: AppViewModel, user: UserAccount) {
         UpiCheckoutDialog(
             targetUid = user.uid,
             targetName = user.fullName,
+            viewModel = viewModel,
             onActivate = { utr ->
                 viewModel.payJoiningFeeViaGateway(
                     method = selectedMethod,
@@ -1126,78 +1127,162 @@ fun PendingPaymentScreen(viewModel: AppViewModel, user: UserAccount) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(10.dp))
+            when (user.paymentStatus) {
+                "PENDING_VERIFICATION" -> {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                    ) {
+                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.HourglassEmpty, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(64.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "ચુકવણી ચકાસણી બાકી છે! / Payment Verification Pending!",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "તમારી ₹૧,૦૦૦ ની ચુકવણી વિનંતી સબમિટ થઈ ગઈ છે. (UTR: ${user.pendingUtr})",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "એડમિન દ્વારા તમારી ચુકવણીની તપાસ અને આઈડી એક્ટિવેશન પ્રક્રિયા ચાલુ છે. કૃપા કરીને થોડી રાહ જુઓ અથવા વધુ માહિતી માટે એડમિનનો સંપર્ક કરો.",
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            // Contact Admin via WhatsApp
+                            val encodedText = java.net.URLEncoder.encode("નમસ્તે એડમિન, મેં ₹૧,૦૦૦ ની જોડાણ ફી ચૂકવી દીધી છે. મારો UID: ${user.uid} અને UTR: ${user.pendingUtr} છે. કૃપા કરીને મારી આઈડી એક્ટિવેટ કરો. / Hello Admin, I have paid the joining fee of ₹1,000. My UID is ${user.uid} and UTR is ${user.pendingUtr}. Please activate my ID.", "UTF-8")
+                            val url = "https://api.whatsapp.com/send?phone=${viewModel.adminWhatsAppNumber.replace("+", "").replace(" ", "")}&text=$encodedText"
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                            viewModel.getApplication<android.app.Application>().startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)) // WhatsApp green color
+                    ) {
+                        Icon(Icons.Default.Phone, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("એડમિનનો સંપર્ક કરો / Contact Admin", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    }
+                }
+                else -> {
+                    if (user.paymentStatus == "REJECTED") {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                            border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.error)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "ચુકવણી અસ્વીકાર કરવામાં આવી છે! / Payment Rejected!",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "એડમિન દ્વારા તમારી છેલ્લી ₹૧,૦૦૦ ની ચુકવણી (UTR નંબર) ની પુષ્ટિ થઈ શકી નથી. કૃપા કરીને સાચો UTR શોધો અને ફરીથી સબમિટ કરો.",
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "તમારું આઈડી ${user.uid} હાલમાં સક્રિય નથી. એપ્લિકેશનનો ઉપયોગ કરવા માટે જોડાણ ફી ચૂકવવી ફરજિયાત છે.",
+                                    textAlign = TextAlign.Center,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
                     Text(
-                        text = "તમારું આઈડી ${user.uid} હાલમાં સક્રિય નથી. એપ્લિકેશનનો ઉપયોગ કરવા માટે જોડાણ ફી ચૂકવવી ફરજિયાત છે.",
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold
+                        text = "જોડાણ ફી: ₹૧,૦૦૦ (નોન-રિફંડપાત્ર)",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 15.dp)
                     )
+
+                    Text("પેમેન્ટ ઓપ્શન્સ પસંદ કરો / Select Payment Method:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 10.dp))
+
+                    // Payment method selector
+                    val paymentMethods = listOf("UPI (PhonePe/GPay)", "ડેબિટ/ક્રેડિટ કાર્ડ", "નેટ બેન્કિંગ")
+                    paymentMethods.forEach { method ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (selectedMethod == method) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface)
+                                .border(1.dp, if (selectedMethod == method) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .clickable { selectedMethod = method }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedMethod == method,
+                                onClick = { selectedMethod = method }
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(method, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = {
+                            showCheckout = true
+                        },
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.Payment, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(Translation.get("pay_fee", lang), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
                 }
-            }
-
-            Text(
-                text = "જોડાણ ફી: ₹૧,૦૦૦ (નોન-રિફંડપાત્ર)",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 15.dp)
-            )
-
-            Text("પેમેન્ટ ઓપ્શન્સ પસંદ કરો / Select Payment Method:", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 10.dp))
-
-            // Payment method selector
-            val paymentMethods = listOf("UPI (PhonePe/GPay)", "ડેબિટ/ક્રેડિટカード", "નેટ બેન્કિંગ")
-            paymentMethods.forEach { method ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (selectedMethod == method) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface)
-                        .border(1.dp, if (selectedMethod == method) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                        .clickable { selectedMethod = method }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = selectedMethod == method,
-                        onClick = { selectedMethod = method }
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(method, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    showCheckout = true
-                },
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(Icons.Default.Payment, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(Translation.get("pay_fee", lang), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
 
             if (successAlert) {
                 AlertDialog(
                     onDismissRequest = { successAlert = false },
-                    title = { Text("ચુકવણી સફળ!") },
-                    text = { Text(Translation.get("payment_success", lang)) },
+                    title = { Text("ચુકવણી સબમિટ થઈ ગઈ છે!") },
+                    text = { Text("તમારી ચુકવણી એડમિન સમક્ષ મંજૂરી માટે સબમિટ કરી દેવામાં આવી છે. એડમિન વેરિફિકેશન પૂર્ણ થયા બાદ આઈડી સક્રિય થઈ જશે.") },
                     confirmButton = {
                         TextButton(onClick = { successAlert = false }) {
-                            Text("ડેશબોર્ડ પર જાઓ / Proceed")
+                            Text("બરાબર / OK")
                         }
                     }
                 )
@@ -1302,6 +1387,14 @@ fun MainAppScaffold(viewModel: AppViewModel, user: UserAccount) {
                     icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
                     label = { Text(Translation.get("settings", lang), maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 )
+                if (user.uid == "EM10000") {
+                    NavigationBarItem(
+                        selected = currentTab == "ADMIN",
+                        onClick = { currentTab = "ADMIN" },
+                        icon = { Icon(Icons.Default.SupervisorAccount, contentDescription = "Admin") },
+                        label = { Text("એડમિન / Admin", maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    )
+                }
             }
         }
     ) { padding ->
@@ -1315,6 +1408,7 @@ fun MainAppScaffold(viewModel: AppViewModel, user: UserAccount) {
                 "WALLET" -> WalletTab(viewModel = viewModel, user = user)
                 "PRODUCTS" -> ProductsTab(viewModel = viewModel, user = user)
                 "SETTINGS" -> SettingsTab(viewModel = viewModel, user = user)
+                "ADMIN" -> AdminTab(viewModel = viewModel, user = user)
             }
         }
     }
@@ -1425,6 +1519,7 @@ fun DashboardTab(viewModel: AppViewModel, user: UserAccount) {
                 UpiCheckoutDialog(
                     targetUid = showCheckoutDialogForRef!!.uid,
                     targetName = showCheckoutDialogForRef!!.fullName,
+                    viewModel = viewModel,
                     onActivate = { utr ->
                         viewModel.activateReferralDirectly(showCheckoutDialogForRef!!.uid, utr)
                         showCheckoutDialogForRef = null
@@ -1482,7 +1577,7 @@ fun DashboardTab(viewModel: AppViewModel, user: UserAccount) {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- PREMIUM REFERRAL CARD & GENERATOR SECTION ---
-                    val referralLink = "https://earnmitra.app/join?ref=${user.uid}"
+                    val referralLink = "${viewModel.referralWebsiteUrl}/?ref=${user.uid}"
 
                     if (user.directReferralsCount >= 3) {
                         Card(
@@ -2970,7 +3065,7 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                 }
             }
 
-            val filteredProducts = ProductData.items.filter {
+            val filteredProducts = viewModel.productsList.filter {
                 (selectedCategory == "ALL" || it.category == selectedCategory) &&
                 (searchQuery.isBlank() || 
                  it.nameEn.contains(searchQuery, ignoreCase = true) || 
@@ -3088,7 +3183,7 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
             }
 
             if (viewModel.cartItems.isNotEmpty()) {
-                val totalCartPrice = ProductData.items.sumOf { p -> (viewModel.cartItems[p.id] ?: 0) * p.price }
+                val totalCartPrice = viewModel.productsList.sumOf { p -> (viewModel.cartItems[p.id] ?: 0) * p.price }
                 Button(
                     onClick = { showCheckoutDialog = true },
                     modifier = Modifier
@@ -3239,7 +3334,7 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
         if (showCheckoutDialog) {
             var totalCartPriceCalculated = 0.0
             viewModel.cartItems.forEach { (productId, qty) ->
-                val prod = ProductData.items.find { it.id == productId }
+                val prod = viewModel.productsList.find { it.id == productId }
                 if (prod != null) {
                     totalCartPriceCalculated += prod.price * qty
                 }
@@ -3292,7 +3387,7 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                             )
                             
                             viewModel.cartItems.forEach { (productId, qty) ->
-                                val prod = ProductData.items.find { it.id == productId }
+                                val prod = viewModel.productsList.find { it.id == productId }
                                 if (prod != null) {
                                     val name = if (lang == Language.GUJARATI) prod.nameGu else prod.nameEn
                                     Row(
@@ -4166,16 +4261,67 @@ fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 2. Real OTP Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("રિયલ ઓટીપી મોડ (Twilio) / Real OTP Mode", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text("SMS અને WhatsApp પર રિયલ OTP મોકલવા માટે Twilio ગોઠવો.", fontSize = 11.sp, color = Color.Gray)
+                        }
+                        Switch(
+                            checked = twilioEnabled,
+                            onCheckedChange = { twilioEnabled = it }
+                        )
+                    }
+
+                    if (twilioEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = twilioSid,
+                            onValueChange = { twilioSid = it },
+                            label = { Text("Twilio Account SID") },
+                            leadingIcon = { Icon(Icons.Default.AccountBox, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = twilioToken,
+                            onValueChange = { twilioToken = it },
+                            label = { Text("Twilio Auth Token") },
+                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = twilioFromPhone,
+                            onValueChange = { twilioFromPhone = it },
+                            label = { Text("Twilio Sender Number") },
+                            placeholder = { Text("e.g. +14155238886 or whatsapp:+14155238886") },
+                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
                         onClick = {
                             viewModel.updateSecuritySettings(
                                 isLockEnabled = pinLockEnabled,
                                 pin = pinCodeInput,
-                                twilioSid = "",
-                                twilioToken = "",
-                                twilioFrom = "",
-                                isRealOtp = false
+                                twilioSid = twilioSid,
+                                twilioToken = twilioToken,
+                                twilioFrom = twilioFromPhone,
+                                isRealOtp = twilioEnabled
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -4727,6 +4873,130 @@ fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
+                    }
+                }
+            }
+        }
+
+        // Admin Verification Panel Card
+        if (user.uid == "EM10000") {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.SupervisorAccount, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("એડમિન પેમેન્ટ વેરીફીકેશન પેનલ / Admin Payment Verification Panel", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                        
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "બાકી રહેલા પેમેન્ટ્સ ચકાસો અને આઈડી એક્ટિવેટ કરો: / Verify pending payments and activate accounts:",
+                            fontSize = 11.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        val pendingUsers = viewModel.pendingVerificationUsers
+                        if (pendingUsers.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
+                                    .padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("કોઈ પેન્ડિંગ ચુકવણી નથી / No pending payments", fontWeight = FontWeight.Medium, color = Color.Gray)
+                            }
+                        } else {
+                            pendingUsers.forEach { pendingUser ->
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.15f)),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(pendingUser.fullName, fontWeight = FontWeight.Bold)
+                                                Text("UID: ${pendingUser.uid} | Ph: ${pendingUser.phoneNumber}", fontSize = 11.sp, color = Color.Gray)
+                                            }
+                                            Card(
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                                                shape = RoundedCornerShape(8.dp)
+                                            ) {
+                                                Text("₹૧,૦૦૦", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                                            }
+                                        }
+                                        
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                                .padding(8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("UTR: ${pendingUser.pendingUtr}", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                            IconButton(
+                                                onClick = {
+                                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                    val clip = android.content.ClipData.newPlainText("UTR", pendingUser.pendingUtr)
+                                                    clipboard.setPrimaryClip(clip)
+                                                    Toast.makeText(context, "UTR નકલ થઈ ગઈ! / UTR Copied!", Toast.LENGTH_SHORT).show()
+                                                },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy UTR", modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(10.dp))
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    viewModel.adminRejectUser(pendingUser.uid)
+                                                },
+                                                modifier = Modifier.weight(1f),
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                            ) {
+                                                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Reject", fontSize = 12.sp)
+                                            }
+
+                                            Button(
+                                                onClick = {
+                                                    viewModel.adminApproveUser(pendingUser.uid)
+                                                },
+                                                modifier = Modifier.weight(1.2f),
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)) // Deep green for Approve
+                                            ) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Approve & Active", fontSize = 12.sp, color = Color.White)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -5554,6 +5824,7 @@ fun NotificationCenterDialog(viewModel: AppViewModel, onDismiss: () -> Unit) {
 fun UpiCheckoutDialog(
     targetUid: String,
     targetName: String,
+    viewModel: AppViewModel,
     onActivate: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -5561,15 +5832,8 @@ fun UpiCheckoutDialog(
     var utrError by remember { mutableStateOf<String?>(null) }
     var selectedApp by remember { mutableStateOf("PhonePe") }
 
-    val upiIds = listOf(
-        "earnmitra@ybl",
-        "earnmitra@ibl",
-        "earnmitra@axl",
-        "earnmitra1@ybl",
-        "earnmitra1@ibl",
-        "earnmitra1@axl"
-    )
-    var selectedUpiId by remember { mutableStateOf(upiIds.first()) }
+    val upiIds = viewModel.customRegistrationUpiIds
+    var selectedUpiId by remember { mutableStateOf(upiIds.firstOrNull() ?: "earnmitra@ybl") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -7161,6 +7425,1148 @@ fun EarningAnalyticsChartCard(viewModel: AppViewModel) {
                 }
             }
         }
+    }
+}
+
+// 5. Admin Control Center Tab
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
+    val lang = viewModel.selectedLanguage
+    val context = LocalContext.current
+    
+    // Load data initially
+    LaunchedEffect(Unit) {
+        viewModel.loadPendingVerificationUsers()
+    }
+    
+    // Local configuration states
+    var twilioSid by remember { mutableStateOf(viewModel.twilioSidState) }
+    var twilioToken by remember { mutableStateOf(viewModel.twilioTokenState) }
+    var twilioFromPhone by remember { mutableStateOf(viewModel.twilioFromPhoneState) }
+    var globalRealOtp by remember { mutableStateOf(viewModel.globalRealOtpMode) }
+    var adminWaNumber by remember { mutableStateOf(viewModel.adminWhatsAppNumber) }
+    var referralWebUrl by remember { mutableStateOf(viewModel.referralWebsiteUrl) }
+    
+    // UPI list management states
+    var newUpiIdInput by remember { mutableStateOf("") }
+    
+    // User management state
+    var userSearchQuery by remember { mutableStateOf("") }
+    var selectedUserForEdit by remember { mutableStateOf<UserAccount?>(null) }
+    var showBalanceDialogForUser by remember { mutableStateOf<UserAccount?>(null) }
+    var adjustAmountInput by remember { mutableStateOf("") }
+    var isDeduction by remember { mutableStateOf(false) }
+    
+    // Product management state
+    var showAddProductDialog by remember { mutableStateOf(false) }
+    var editingProduct by remember { mutableStateOf<Product?>(null) }
+    var prodNameEn by remember { mutableStateOf("") }
+    var prodNameGu by remember { mutableStateOf("") }
+    var prodPrice by remember { mutableStateOf("") }
+    var prodCategory by remember { mutableStateOf("GROCERY") }
+    var prodDescEn by remember { mutableStateOf("") }
+    var prodDescGu by remember { mutableStateOf("") }
+    var prodIsMandatory by remember { mutableStateOf(false) }
+    
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Welcome Header
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SupervisorAccount,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "એડમિન કંટ્રોલ સેન્ટર / Admin Control Center",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "બધી સુવિધાઓ એક જ સ્ક્રીનથી કંટ્રોલ કરો / Manage all configurations in one place",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+        }
+        
+        // 1. Pending payment approval section
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.HourglassEmpty,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "પેન્ડિંગ પેમેન્ટ વિનંતીઓ / Pending Payments",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val pendingList = viewModel.pendingVerificationUsers
+                    if (pendingList.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "કોઈ પેન્ડિંગ ચુકવણીઓ નથી! / No pending approvals",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                    } else {
+                        pendingList.forEach { pendingUser ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(pendingUser.fullName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text("UID: ${pendingUser.uid} | Ph: ${pendingUser.phoneNumber}", fontSize = 11.sp, color = Color.Gray)
+                                        }
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text("₹૧,૦૦૦", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("UTR: ${pendingUser.pendingUtr}", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                        IconButton(
+                                            onClick = {
+                                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                val clip = android.content.ClipData.newPlainText("UTR", pendingUser.pendingUtr)
+                                                clipboard.setPrimaryClip(clip)
+                                                Toast.makeText(context, "UTR નકલ થઈ ગઈ! / UTR Copied!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy UTR", modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { viewModel.adminRejectUser(pendingUser.uid) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                        ) {
+                                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Reject", fontSize = 11.sp)
+                                        }
+                                        Button(
+                                            onClick = { viewModel.adminApproveUser(pendingUser.uid) },
+                                            modifier = Modifier.weight(1.2f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                                        ) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Approve", fontSize = 11.sp, color = Color.White)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 2. OTP & TWILIO SETTINGS
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Sms,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "ઓટીપી ગેટવે (Twilio) કન્ફિગ્યુરેશન / Twilio Configuration",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Real OTP Mode Switch
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1.3f)) {
+                            Text(
+                                text = "રિયલ ઓટીપી મોડ / Real OTP Mode",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = "ચાલુ: Twilio વડે મોકલો | બંધ: ડેમો મોડ (કોડ '1234')",
+                                fontSize = 10.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Switch(
+                            checked = globalRealOtp,
+                            onCheckedChange = {
+                                globalRealOtp = it
+                                viewModel.updateGlobalRealOtpMode(it)
+                            }
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = twilioSid,
+                        onValueChange = { twilioSid = it },
+                        label = { Text("Twilio Account SID") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedTextField(
+                        value = twilioToken,
+                        onValueChange = { twilioToken = it },
+                        label = { Text("Twilio Auth Token") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedTextField(
+                        value = twilioFromPhone,
+                        onValueChange = { twilioFromPhone = it },
+                        label = { Text("Twilio Sender Number / Sender ID") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Button(
+                        onClick = {
+                            viewModel.updateTwilioSettings(twilioSid, twilioToken, twilioFromPhone)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Twilio સેટિંગ્સ સાચવો / Save Twilio Config")
+                    }
+                }
+            }
+        }
+        
+        // 3. ADMIN CONTACT & PAY UPI IDS CONFIG
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Call,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "એડમિન વોટ્સએપ અને યુપીઆઈ લિસ્ટ / Admin Details",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Admin WhatsApp Contact input
+                    OutlinedTextField(
+                        value = adminWaNumber,
+                        onValueChange = { adminWaNumber = it },
+                        label = { Text("એડમિન હેલ્પલાઇન વોટ્સએપ નંબર / Admin WhatsApp Link Number") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Button(
+                        onClick = {
+                            viewModel.updateAdminWhatsAppNumber(adminWaNumber)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("વોટ્સએપ નંબર સાચવો / Save Admin Number")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Referral Website URL input
+                    Text(
+                        text = "રેફરલ ડાઉનલોડ વેબસાઇટ લિંક સેટઅપ / Referral Web App Link:",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = referralWebUrl,
+                        onValueChange = { referralWebUrl = it },
+                        label = { Text("રેફરલ વેબસાઇટ URL / Referral Website URL") },
+                        placeholder = { Text("https://ais-pre-lssi3sfr4wtdjznoh2xcdt-1007319374021.asia-southeast1.run.app") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                viewModel.updateReferralWebsiteUrl(referralWebUrl)
+                            },
+                            modifier = Modifier.weight(1.1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("સાચવો / Save URL", maxLines = 1, fontSize = 11.sp)
+                        }
+                        
+                        OutlinedButton(
+                            onClick = {
+                                val defaultUrl = "https://ais-pre-lssi3sfr4wtdjznoh2xcdt-1007319374021.asia-southeast1.run.app"
+                                referralWebUrl = defaultUrl
+                                viewModel.updateReferralWebsiteUrl(defaultUrl)
+                            },
+                            modifier = Modifier.weight(0.9f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("ડિફોલ્ટ કરો / Reset", maxLines = 1, fontSize = 11.sp)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // UPI ID List management
+                    Text(
+                        text = "노ંધણી પેમેન્ટ માટે ઉપલબ્ધ યુપીઆઈ આઈડી લિસ્ટ: / Manage Gateway UPI IDs:",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    viewModel.customRegistrationUpiIds.forEach { upi ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(upi, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            IconButton(
+                                onClick = {
+                                    val currentList = viewModel.customRegistrationUpiIds.toMutableList()
+                                    currentList.remove(upi)
+                                    viewModel.updateCustomUpiIds(currentList)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete UPI ID", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = newUpiIdInput,
+                            onValueChange = { newUpiIdInput = it },
+                            label = { Text("નવો UPI ID ઉમેરો") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
+                        Button(
+                            onClick = {
+                                val trimmed = newUpiIdInput.trim()
+                                if (trimmed.isNotBlank() && trimmed.contains("@")) {
+                                    val currentList = viewModel.customRegistrationUpiIds.toMutableList()
+                                    if (!currentList.contains(trimmed)) {
+                                        currentList.add(trimmed)
+                                        viewModel.updateCustomUpiIds(currentList)
+                                        newUpiIdInput = ""
+                                    } else {
+                                        Toast.makeText(context, "UPI ID પહેલાથી જ લિસ્ટમાં છે! / Already exists!", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    Toast.makeText(context, "સાચો UPI ID દાખલ કરો! / Enter valid UPI ID!", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(56.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add UPI")
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 4. ALL REGISTERED USERS MANAGEMENT
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.People,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "વપરાશકર્તાઓનું સંચાલન / Users Management",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = userSearchQuery,
+                        onValueChange = { userSearchQuery = it },
+                        placeholder = { Text("વપરાશકર્તા શોધો (નામ / મોબાઈલ / UID)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                        trailingIcon = {
+                            if (userSearchQuery.isNotBlank()) {
+                                IconButton(onClick = { userSearchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                }
+                            }
+                        }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val filteredUsers = viewModel.allUsersList.filter {
+                        it.fullName.contains(userSearchQuery, ignoreCase = true) ||
+                        it.phoneNumber.contains(userSearchQuery) ||
+                        it.uid.contains(userSearchQuery, ignoreCase = true)
+                    }
+                    
+                    if (filteredUsers.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "કોઈ મેચિંગ યુઝર મળ્યા નથી / No matching users found",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                    } else {
+                        filteredUsers.take(15).forEach { userItem ->
+                            val isExpanded = selectedUserForEdit?.uid == userItem.uid
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isExpanded) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .clickable {
+                                        selectedUserForEdit = if (isExpanded) null else userItem
+                                    }
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(userItem.fullName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                if (userItem.isActive) {
+                                                    Card(
+                                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                                                        shape = RoundedCornerShape(6.dp)
+                                                    ) {
+                                                        Text("Active", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                    }
+                                                } else {
+                                                    Card(
+                                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                                                        shape = RoundedCornerShape(6.dp)
+                                                    ) {
+                                                        Text("Inactive", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                    }
+                                                }
+                                            }
+                                            Text("UID: ${userItem.uid} | Ph: ${userItem.phoneNumber}", fontSize = 11.sp, color = Color.Gray)
+                                            Text("વોલેટ બેલેન્સ / Wallet: ₹${String.format("%.2f", userItem.walletBalance)}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                        Icon(
+                                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = "Expand/Collapse"
+                                        )
+                                    }
+                                    
+                                    if (isExpanded) {
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Divider()
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        
+                                        // Additional info
+                                        Text("જોડાણ તારીખ / Joined: ${java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(java.util.Date(userItem.createdTimestamp))}", fontSize = 11.sp, color = Color.Gray)
+                                        Text("દ્વારા રેફરલ / Referred By: ${userItem.referredBy ?: "None (Direct Joined)"}", fontSize = 11.sp, color = Color.Gray)
+                                        Text("KYC સ્ટેટસ / KYC Status: ${userItem.kycStatus}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (userItem.kycStatus == "APPROVED") Color(0xFF2E7D32) else if (userItem.kycStatus == "PENDING") Color(0xFFEF6C00) else Color.Red)
+                                        
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        
+                                        // Row 1 of actions: Account Activation / Deactivation
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            if (!userItem.isActive) {
+                                                Button(
+                                                    onClick = {
+                                                        viewModel.adminForceActivateUser(userItem.uid)
+                                                        selectedUserForEdit = userItem.copy(isActive = true, paymentStatus = "APPROVED")
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                                    shape = RoundedCornerShape(10.dp)
+                                                ) {
+                                                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("એક્ટિવેટ કરો / Activate", fontSize = 11.sp)
+                                                }
+                                            } else {
+                                                Button(
+                                                    onClick = {
+                                                        viewModel.adminDeactivateUser(userItem.uid)
+                                                        selectedUserForEdit = userItem.copy(isActive = false, paymentStatus = "NOT_PAID")
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                                    shape = RoundedCornerShape(10.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("ડી-એક્ટિવેટ / Deactivate", fontSize = 11.sp)
+                                                }
+                                            }
+                                            
+                                            Button(
+                                                onClick = {
+                                                    showBalanceDialogForUser = userItem
+                                                    adjustAmountInput = ""
+                                                    isDeduction = false
+                                                },
+                                                modifier = Modifier.weight(1f),
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                                shape = RoundedCornerShape(10.dp)
+                                            ) {
+                                                Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("બેલેન્સ બદલો / Adjust Bal", fontSize = 11.sp)
+                                            }
+                                        }
+                                        
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        // Row 2 of actions: KYC status change
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("KYC સેટ કરો: / Set KYC:", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(0.8f))
+                                            
+                                            listOf("PENDING", "APPROVED", "NOT_STARTED").forEach { kStatus ->
+                                                val isSelected = userItem.kycStatus == kStatus
+                                                FilterChip(
+                                                    selected = isSelected,
+                                                    onClick = {
+                                                        viewModel.adminUpdateUserKycStatus(userItem.uid, kStatus)
+                                                        selectedUserForEdit = userItem.copy(kycStatus = kStatus)
+                                                    },
+                                                    label = { Text(kStatus, fontSize = 9.sp) },
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 5. PRODUCT MANAGEMENT MENU
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingBag,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "પ્રોડક્ટ મેનેજમેન્ટ / Product Management",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                        
+                        IconButton(
+                            onClick = {
+                                prodNameEn = ""
+                                prodNameGu = ""
+                                prodPrice = ""
+                                prodCategory = "GROCERY"
+                                prodDescEn = ""
+                                prodDescGu = ""
+                                prodIsMandatory = false
+                                showAddProductDialog = true
+                            },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).size(36.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Product", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (viewModel.productsList.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "કોઈ પ્રોડક્ટ ઉપલબ્ધ નથી / No products found",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                    } else {
+                        viewModel.productsList.forEach { product ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1.2f)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Text(
+                                                    text = if (lang == Language.GUJARATI) product.nameGu else product.nameEn,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp
+                                                )
+                                                if (product.isMandatory) {
+                                                    Card(
+                                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                                                        shape = RoundedCornerShape(6.dp)
+                                                    ) {
+                                                        Text("Mandatory", color = Color.Red, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                    }
+                                                }
+                                            }
+                                            Text(
+                                                text = "Category: ${product.category}",
+                                                fontSize = 11.sp,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                text = if (lang == Language.GUJARATI) product.descriptionGu else product.descriptionEn,
+                                                fontSize = 11.sp,
+                                                color = Color.Gray,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Column(
+                                            horizontalAlignment = Alignment.End,
+                                            modifier = Modifier.weight(0.8f)
+                                        ) {
+                                            Text(
+                                                text = "₹${product.price}",
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 15.sp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                IconButton(
+                                                    onClick = {
+                                                        editingProduct = product
+                                                        prodNameEn = product.nameEn
+                                                        prodNameGu = product.nameGu
+                                                        prodPrice = product.price.toString()
+                                                        prodCategory = product.category
+                                                        prodDescEn = product.descriptionEn
+                                                        prodDescGu = product.descriptionGu
+                                                        prodIsMandatory = product.isMandatory
+                                                    },
+                                                    modifier = Modifier.size(28.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                                                ) {
+                                                    Icon(Icons.Default.Edit, contentDescription = "Edit Product", tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(14.dp))
+                                                }
+                                                
+                                                IconButton(
+                                                    onClick = {
+                                                        viewModel.deleteProduct(product.id)
+                                                    },
+                                                    modifier = Modifier.size(28.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
+                                                ) {
+                                                    Icon(Icons.Default.Delete, contentDescription = "Delete Product", tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(14.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Balance Adjust dialog
+    if (showBalanceDialogForUser != null) {
+        AlertDialog(
+            onDismissRequest = { showBalanceDialogForUser = null },
+            title = { Text("બેલેન્સ કંટ્રોલ / Balance Control") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("વપરાશકર્તા: ${showBalanceDialogForUser!!.fullName} (${showBalanceDialogForUser!!.uid})")
+                    Text("હાલનું વોલેટ બેલેન્સ: ₹${String.format("%.2f", showBalanceDialogForUser!!.walletBalance)}", fontWeight = FontWeight.Bold)
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = !isDeduction,
+                            onClick = { isDeduction = false },
+                            label = { Text("પૈસા ઉમેરો (+) / Add") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = isDeduction,
+                            onClick = { isDeduction = true },
+                            label = { Text("પૈસા બાદ કરો (-) / Deduct") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    
+                    OutlinedTextField(
+                        value = adjustAmountInput,
+                        onValueChange = { adjustAmountInput = it },
+                        label = { Text("રકમ દાખલ કરો / Enter Amount (₹)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val amt = adjustAmountInput.toDoubleOrNull()
+                        if (amt != null && amt > 0) {
+                            val sign = if (isDeduction) -1.0 else 1.0
+                            viewModel.adminAdjustUserBalance(showBalanceDialogForUser!!.uid, amt * sign)
+                            showBalanceDialogForUser = null
+                        } else {
+                            Toast.makeText(context, "મહેરબાની કરીને સાચી રકમ દાખલ કરો! / Enter valid positive amount!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("પુષ્ટિ કરો / Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBalanceDialogForUser = null }) {
+                    Text("રદ કરો / Cancel")
+                }
+            }
+        )
+    }
+
+    // 1. Add Product Dialog
+    if (showAddProductDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddProductDialog = false },
+            title = { Text("નવી પ્રોડક્ટ ઉમેરો / Add New Product") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    OutlinedTextField(
+                        value = prodNameEn,
+                        onValueChange = { prodNameEn = it },
+                        label = { Text("Product Name (English)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = prodNameGu,
+                        onValueChange = { prodNameGu = it },
+                        label = { Text("પ્રોડક્ટનું નામ (ગુજરાતી)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = prodPrice,
+                        onValueChange = { prodPrice = it },
+                        label = { Text("કિંમત / Price (₹)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Text("Category / શ્રેણી:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("GROCERY", "CLOTHING", "ELECTRONICS").forEach { cat ->
+                            FilterChip(
+                                selected = prodCategory == cat,
+                                onClick = { prodCategory = cat },
+                                label = { Text(cat, fontSize = 10.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    
+                    OutlinedTextField(
+                        value = prodDescEn,
+                        onValueChange = { prodDescEn = it },
+                        label = { Text("Description (English)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = prodDescGu,
+                        onValueChange = { prodDescGu = it },
+                        label = { Text("વર્ણન (ગુજરાતી)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("ફરજિયાત ખરીદી / Is Mandatory:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Switch(
+                            checked = prodIsMandatory,
+                            onCheckedChange = { prodIsMandatory = it }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val p = prodPrice.toDoubleOrNull()
+                        if (prodNameEn.isNotBlank() && prodNameGu.isNotBlank() && p != null && p > 0) {
+                            viewModel.addProduct(
+                                nameEn = prodNameEn,
+                                nameGu = prodNameGu,
+                                price = p,
+                                category = prodCategory,
+                                descriptionEn = prodDescEn,
+                                descriptionGu = prodDescGu,
+                                isMandatory = prodIsMandatory
+                            )
+                            showAddProductDialog = false
+                        } else {
+                            Toast.makeText(context, "સાચી વિગતો ભરો! / Fill valid details!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("ઉમેરો / Add")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddProductDialog = false }) {
+                    Text("રદ કરો / Cancel")
+                }
+            }
+        )
+    }
+
+    // 2. Edit Product Dialog
+    if (editingProduct != null) {
+        AlertDialog(
+            onDismissRequest = { editingProduct = null },
+            title = { Text("પ્રોડક્ટ સંપાદિત કરો / Edit Product") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    OutlinedTextField(
+                        value = prodNameEn,
+                        onValueChange = { prodNameEn = it },
+                        label = { Text("Product Name (English)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = prodNameGu,
+                        onValueChange = { prodNameGu = it },
+                        label = { Text("પ્રોડક્ટનું નામ (ગુજરાતી)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = prodPrice,
+                        onValueChange = { prodPrice = it },
+                        label = { Text("કિંમત / Price (₹)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Text("Category / શ્રેણી:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("GROCERY", "CLOTHING", "ELECTRONICS").forEach { cat ->
+                            FilterChip(
+                                selected = prodCategory == cat,
+                                onClick = { prodCategory = cat },
+                                label = { Text(cat, fontSize = 10.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    
+                    OutlinedTextField(
+                        value = prodDescEn,
+                        onValueChange = { prodDescEn = it },
+                        label = { Text("Description (English)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    OutlinedTextField(
+                        value = prodDescGu,
+                        onValueChange = { prodDescGu = it },
+                        label = { Text("વર્ણન (ગુજરાતી)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("ફરજિયાત ખરીદી / Is Mandatory:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Switch(
+                            checked = prodIsMandatory,
+                            onCheckedChange = { prodIsMandatory = it }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val p = prodPrice.toDoubleOrNull()
+                        if (prodNameEn.isNotBlank() && prodNameGu.isNotBlank() && p != null && p > 0) {
+                            val updated = editingProduct!!.copy(
+                                nameEn = prodNameEn,
+                                nameGu = prodNameGu,
+                                price = p,
+                                category = prodCategory,
+                                descriptionEn = prodDescEn,
+                                descriptionGu = prodDescGu,
+                                isMandatory = prodIsMandatory
+                            )
+                            viewModel.updateProduct(updated)
+                            editingProduct = null
+                        } else {
+                            Toast.makeText(context, "સાચી વિગતો ભરો! / Fill valid details!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("સાચવો / Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingProduct = null }) {
+                    Text("રદ કરો / Cancel")
+                }
+            }
+        )
     }
 }
 
