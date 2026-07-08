@@ -11,5 +11,8 @@ data class Order(
     val totalPrice: Double,
     val shippingAddress: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val status: String = "DELIVERED" // "PENDING", "SHIPPED", "DELIVERED"
+    val status: String = "DELIVERED", // "PENDING", "SHIPPED", "DELIVERED"
+    val paymentMethod: String = "UPI", // "UPI", "WALLET", "COD"
+    val paymentStatus: String = "PAID", // "PAID", "PENDING"
+    val paymentRef: String = "" // Added to support UTR numbers / reference details
 )

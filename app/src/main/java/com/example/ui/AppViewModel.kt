@@ -146,6 +146,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Cart & Order State Variables
     var cartItems by mutableStateOf<Map<Int, Int>>(emptyMap()) // Product ID -> Quantity
     var userOrders by mutableStateOf<List<Order>>(emptyList())
+    var allOrdersListState by mutableStateOf<List<Order>>(emptyList())
 
     // Shipping Address State Variables
     var shippingName by mutableStateOf("")
@@ -156,9 +157,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var selectedPaymentMethod by mutableStateOf("UPI") // "UPI", "WALLET", "COD"
 
     init {
-        // Safety check: Reset referralWebsiteUrl if it has legacy incorrect domains (like earnmitra.app or has /join or is empty)
+        // Safety check: Reset referralWebsiteUrl if it has legacy incorrect domains (like earnmitra.app, earnmintra.app, or contains /join, or is empty)
         val defaultUrl = "https://ais-pre-lssi3sfr4wtdjznoh2xcdt-1007319374021.asia-southeast1.run.app"
-        if (referralWebsiteUrl.isBlank() || referralWebsiteUrl.contains("earnmitra.app") || referralWebsiteUrl.contains("/join")) {
+        if (referralWebsiteUrl.isBlank() || 
+            referralWebsiteUrl.contains("earnmitra.app") || 
+            referralWebsiteUrl.contains("earnmintra.app") || 
+            referralWebsiteUrl.contains("/join")
+        ) {
             referralWebsiteUrl = defaultUrl
             sharedPrefs.edit().putString("referral_website_url", defaultUrl).apply()
         }
@@ -730,6 +735,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 userOrders = ords
             }
         }
+        viewModelScope.launch {
+            repository.getAllOrdersFlow().collect { ords ->
+                allOrdersListState = ords
+            }
+        }
     }
 
     fun logout() {
@@ -740,6 +750,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         currentNotifications = emptyList()
         directReferrals = emptyList()
         userOrders = emptyList()
+        allOrdersListState = emptyList()
         cartItems = emptyMap()
         showOtpEntry = false
         is2FaRequiredStep = false
@@ -1023,8 +1034,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         referralWebsiteUrl = cleanUrl
         sharedPrefs.edit().putString("referral_website_url", referralWebsiteUrl).apply()
         
-        if (cleanUrl.contains("earnmitra.app")) {
-            Toast.makeText(getApplication(), "ચેતવણી: earnmitra.app માટે સક્રિય ડોમેન અને DNS સેટઅપ હોવું જરૂરી છે. / Warning: earnmitra.app requires active domain & DNS configuration.", Toast.LENGTH_LONG).show()
+        if (cleanUrl.contains("earnmitra.app") || cleanUrl.contains("earnmintra.app")) {
+            Toast.makeText(getApplication(), "ચેતવણી: earnmitra.app માટે સક્રિય ડોમેન અને DNS સેટઅપ હોવું જરૂરી છે. / Warning: earnmitra.app/earnmintra.app requires active domain & DNS configuration.", Toast.LENGTH_LONG).show()
         } else {
             Toast.makeText(getApplication(), "રેફરલ વેબસાઇટ લિંક બદલાઈ! / Referral website URL updated!", Toast.LENGTH_SHORT).show()
         }
@@ -1103,6 +1114,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val list = mutableListOf<Product>()
                 for (i in 0 until array.length()) {
                     val obj = array.getJSONObject(i)
+                    val sCount = if (obj.has("stockCount")) obj.getInt("stockCount") else 10
+                    val outOfStock = if (obj.has("isOutOfStock")) obj.getBoolean("isOutOfStock") else (sCount <= 0)
+                    val imgUrl = if (obj.has("imageUrl")) obj.optString("imageUrl", "") else ""
                     list.add(
                         Product(
                             id = obj.getInt("id"),
@@ -1112,7 +1126,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                             isMandatory = obj.getBoolean("isMandatory"),
                             descriptionEn = obj.getString("descriptionEn"),
                             descriptionGu = obj.getString("descriptionGu"),
-                            category = obj.getString("category")
+                            category = obj.getString("category"),
+                            stockCount = sCount,
+                            isOutOfStock = outOfStock,
+                            imageUrl = imgUrl
                         )
                     )
                 }
@@ -1137,6 +1154,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 obj.put("descriptionEn", prod.descriptionEn)
                 obj.put("descriptionGu", prod.descriptionGu)
                 obj.put("category", prod.category)
+                obj.put("stockCount", prod.stockCount)
+                obj.put("isOutOfStock", prod.isOutOfStock)
+                obj.put("imageUrl", prod.imageUrl)
                 array.put(obj)
             }
             sharedPrefs.edit().putString("custom_products_list", array.toString()).apply()
@@ -1145,7 +1165,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addProduct(nameEn: String, nameGu: String, price: Double, category: String, descriptionEn: String, descriptionGu: String, isMandatory: Boolean = false) {
+    fun addProduct(nameEn: String, nameGu: String, price: Double, category: String, descriptionEn: String, descriptionGu: String, isMandatory: Boolean = false, stockCount: Int = 10, isOutOfStock: Boolean = false, imageUrl: String = "") {
         val nextId = (productsList.maxOfOrNull { it.id } ?: 0) + 1
         val newProduct = Product(
             id = nextId,
@@ -1155,7 +1175,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             isMandatory = isMandatory,
             descriptionEn = descriptionEn,
             descriptionGu = descriptionGu,
-            category = category
+            category = category,
+            stockCount = stockCount,
+            isOutOfStock = isOutOfStock || (stockCount <= 0),
+            imageUrl = imageUrl
         )
         productsList = productsList + newProduct
         saveProducts()
@@ -1616,12 +1639,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addToCart(productId: Int) {
+        val prod = productsList.find { it.id == productId } ?: return
+        if (prod.isOutOfStock || prod.stockCount <= 0) {
+            Toast.makeText(getApplication(), "આ પ્રોડક્ટ હાલમાં સ્ટોકમાં નથી! / This product is currently out of stock!", Toast.LENGTH_SHORT).show()
+            return
+        }
         val current = cartItems.toMutableMap()
-        current[productId] = (current[productId] ?: 0) + 1
+        val currentQty = current[productId] ?: 0
+        if (currentQty >= prod.stockCount) {
+            Toast.makeText(getApplication(), "માત્ર ${prod.stockCount} વસ્તુઓ જ સ્ટોકમાં ઉપલબ્ધ છે! / Only ${prod.stockCount} items available in stock!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        current[productId] = currentQty + 1
         cartItems = current
     }
 
     fun updateCartQuantity(productId: Int, qty: Int) {
+        val prod = productsList.find { it.id == productId } ?: return
+        if (qty > prod.stockCount) {
+            Toast.makeText(getApplication(), "માત્ર ${prod.stockCount} વસ્તુઓ જ સ્ટોકમાં ઉપલબ્ધ છે! / Only ${prod.stockCount} items available in stock!", Toast.LENGTH_SHORT).show()
+            return
+        }
         val current = cartItems.toMutableMap()
         if (qty <= 0) {
             current.remove(productId)
@@ -1661,7 +1699,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun checkoutCart() {
+    fun checkoutCart(upiUtr: String? = null) {
         val uid = loggedInUserUid ?: return
         val user = currentUser ?: return
         if (cartItems.isEmpty()) return
@@ -1679,6 +1717,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val fullAddress = "$shippingName, $shippingPhone, $shippingAddressLines, $shippingCity - $shippingPincode"
 
         viewModelScope.launch {
+            // 1. Calculate pricing and build items list FIRST
             var subtotal = 0.0
             val itemListStringBuilder = StringBuilder()
             
@@ -1695,12 +1734,52 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val gst = subtotal * 0.22
             val finalPrice = subtotal + gst
 
+            // 2. Validate wallet balance if paying with WALLET
+            if (selectedPaymentMethod == "WALLET") {
+                if (user.walletBalance < finalPrice) {
+                    Toast.makeText(getApplication(), "વોલેટમાં અપૂરતું બેલેન્સ છે! / Insufficient Wallet Balance!", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+            }
+
+            // 3. Validate all items in the cart against their stock count
+            var stockErrorMsg: String? = null
+            for ((productId, qty) in cartItems) {
+                val prod = productsList.find { it.id == productId }
+                if (prod == null) {
+                    stockErrorMsg = "પ્રોડક્ટ મળી નથી! / Product not found!"
+                    break
+                }
+                if (prod.isOutOfStock || prod.stockCount < qty) {
+                    val name = if (selectedLanguage == Language.GUJARATI) prod.nameGu else prod.nameEn
+                    stockErrorMsg = "'$name' સ્ટોકમાં પૂરતું નથી! ઉપલબ્ધ: ${prod.stockCount} / '$name' is not enough in stock! Available: ${prod.stockCount}"
+                    break
+                }
+            }
+
+            if (stockErrorMsg != null) {
+                Toast.makeText(getApplication(), stockErrorMsg, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+
+            // 4. Decrement the stock levels only after all validation succeeded
+            productsList = productsList.map { prod ->
+                val qtyPurchased = cartItems[prod.id] ?: 0
+                if (qtyPurchased > 0) {
+                    val remainingStock = (prod.stockCount - qtyPurchased).coerceAtLeast(0)
+                    prod.copy(
+                        stockCount = remainingStock,
+                        isOutOfStock = remainingStock == 0
+                    )
+                } else {
+                    prod
+                }
+            }
+            saveProducts()
+
+            // 5. Deduct wallet or record payment transaction
             when (selectedPaymentMethod) {
                 "WALLET" -> {
-                    if (user.walletBalance < finalPrice) {
-                        Toast.makeText(getApplication(), "વોલેટમાં અપૂરતું બેલેન્સ છે! / Insufficient Wallet Balance!", Toast.LENGTH_LONG).show()
-                        return@launch
-                    }
                     val updatedUser = user.copy(walletBalance = user.walletBalance - finalPrice)
                     repository.updateUser(updatedUser)
                     currentUser = updatedUser
@@ -1715,13 +1794,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
                 "UPI" -> {
-                    // Simulate UPI gateway success
                     repository.insertTransaction(
                         Transaction(
                             uid = uid,
                             type = "SHOPPING",
                             amount = finalPrice,
-                            description = "$itemNames UPI દ્વારા ખરીદી + ૨૨% જીએસટી / UPI Purchase + 22% GST"
+                            description = "$itemNames UPI દ્વારા ખરીદી (UTR: ${upiUtr ?: "None"})"
                         )
                     )
                 }
@@ -1738,28 +1816,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Insert into local Orders table with "PENDING" status
+            // 6. Insert into local Orders table with "PENDING" status
             repository.insertOrder(
                 Order(
                     uid = uid,
                     productNames = itemNames,
                     totalPrice = finalPrice,
                     shippingAddress = fullAddress,
-                    status = "PENDING"
+                    status = "PENDING",
+                    paymentMethod = selectedPaymentMethod,
+                    paymentStatus = if (selectedPaymentMethod == "UPI") "PENDING_VERIFICATION" else if (selectedPaymentMethod == "COD") "PENDING" else "PAID",
+                    paymentRef = upiUtr ?: ""
                 )
             )
 
-            // Insert Notification
+            // 7. Insert Notification
+            val notifMsg = if (selectedPaymentMethod == "UPI") {
+                "તમારો ઓર્ડર $itemNames સ્વીકારવામાં આવ્યો છે (નજીકના સમયમાં પેમેન્ટ વેરિફાય થયા પછી ડિલિવરી કરવામાં આવશે). / Your order is placed and is pending payment verification."
+            } else {
+                "તમારો ઓર્ડર $itemNames સ્વીકારવામાં આવ્યો છે (સ્થિતિ: પેન્ડિંગ). વસ્તુ મળ્યા પછી ડિલિવર માર્ક કરો. / Your order has been placed (Status: PENDING). Mark as Delivered when you receive it."
+            }
             repository.insertNotification(
                 AppNotification(
                     uid = uid,
                     title = "ઓર્ડર સફળતાપૂર્વક મૂકવામાં આવ્યો! / Order Placed Successfully!",
-                    message = "તમારો ઓર્ડર $itemNames સ્વીકારવામાં આવ્યો છે (સ્થિતિ: પેન્ડિંગ). વસ્તુ મળ્યા પછી ડિલિવર માર્ક કરો. / Your order has been placed (Status: PENDING). Mark as Delivered when you receive it.",
+                    message = notifMsg,
                     type = "SYSTEM"
                 )
             )
 
-            // Clear Cart and Inputs
+            // 8. Clear Cart and Inputs
             cartItems = emptyMap()
             shippingName = ""
             shippingPhone = ""
@@ -1768,6 +1854,38 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             shippingPincode = ""
 
             Toast.makeText(getApplication(), "ઓર્ડર સફળ! ઓર્ડર પેન્ડિંગ સ્ટેટસમાં છે. / Order Successful! Status: PENDING", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun adminUpdateOrderStatus(order: Order, newStatus: String) {
+        viewModelScope.launch {
+            val updated = order.copy(status = newStatus)
+            repository.updateOrder(updated)
+            // Send user a notification
+            repository.insertNotification(
+                AppNotification(
+                    uid = order.uid,
+                    title = "ઓર્ડર સ્ટેટસ અપડેટ! / Order Status Updated!",
+                    message = "તમારા ઓર્ડર (ID: #${order.id}) નું સ્ટેટસ હવે $newStatus છે. / Your order status is now $newStatus.",
+                    type = "SYSTEM"
+                )
+            )
+        }
+    }
+
+    fun adminApproveOrderPayment(order: Order) {
+        viewModelScope.launch {
+            val updated = order.copy(paymentStatus = "PAID")
+            repository.updateOrder(updated)
+            // Send user a notification
+            repository.insertNotification(
+                AppNotification(
+                    uid = order.uid,
+                    title = "પેમેન્ટ મંજૂર! / Order Payment Approved!",
+                    message = "તમારા ઓર્ડર (ID: #${order.id}) ની ચૂકવણી મંજૂર કરવામાં આવી છે. / Payment for order #${order.id} has been approved.",
+                    type = "SYSTEM"
+                )
+            )
         }
     }
 
@@ -1787,6 +1905,66 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
             Toast.makeText(getApplication(), "ઓર્ડર મેળવેલ તરીકે માર્ક કરેલ છે! / Order marked as Delivered!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun collectCodPayment(order: Order, method: String, onSuccess: () -> Unit = {}, onFailure: (String) -> Unit = {}) {
+        val uid = loggedInUserUid ?: return
+        viewModelScope.launch {
+            val user = currentUser ?: return@launch
+            when (method) {
+                "WALLET" -> {
+                    if (user.walletBalance < order.totalPrice) {
+                        onFailure("વોલેટમાં અપૂરતું બેલેન્સ છે! / Insufficient Wallet Balance!")
+                        return@launch
+                    }
+                    val updatedUser = user.copy(walletBalance = user.walletBalance - order.totalPrice)
+                    repository.updateUser(updatedUser)
+                    currentUser = updatedUser
+                    
+                    repository.insertTransaction(
+                        Transaction(
+                            uid = uid,
+                            type = "SHOPPING",
+                            amount = order.totalPrice,
+                            description = "${order.productNames} કેશ ઓન ડિલિવરી ચૂકવણી (વોલેટ) / COD Payment (Wallet)"
+                        )
+                    )
+                }
+                "UPI" -> {
+                    repository.insertTransaction(
+                        Transaction(
+                            uid = uid,
+                            type = "SHOPPING",
+                            amount = order.totalPrice,
+                            description = "${order.productNames} કેશ ઓન ડિલિવરી ચૂકવણી (UPI) / COD Payment (UPI)"
+                        )
+                    )
+                }
+                "CASH" -> {
+                    repository.insertTransaction(
+                        Transaction(
+                            uid = uid,
+                            type = "SHOPPING",
+                            amount = order.totalPrice,
+                            description = "${order.productNames} કેશ ઓન ડિલિવરી ચૂકવણી (રોકડ) / COD Payment (Cash Collected)"
+                        )
+                    )
+                }
+            }
+            
+            val updatedOrder = order.copy(status = "DELIVERED", paymentStatus = "PAID")
+            repository.updateOrder(updatedOrder)
+            
+            repository.insertNotification(
+                AppNotification(
+                    uid = uid,
+                    title = "ઓર્ડર ડિલિવર અને ચૂકવણી સફળ! / Order Delivered & Paid!",
+                    message = "તમારો ઓર્ડર \"${order.productNames}\" ડિલિવર થયો છે અને ₹${order.totalPrice} ની ચૂકવણી સફળ થઈ છે. / Your order has been delivered and payment of ₹${order.totalPrice} is successful.",
+                    type = "SYSTEM"
+                )
+            )
+            onSuccess()
         }
     }
 

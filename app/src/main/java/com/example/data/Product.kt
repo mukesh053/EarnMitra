@@ -8,7 +8,10 @@ data class Product(
     val isMandatory: Boolean,
     val descriptionEn: String,
     val descriptionGu: String,
-    val category: String // "ELECTRONICS", "GROCERY", "CLOTHING"
+    val category: String, // "ELECTRONICS", "GROCERY", "CLOTHING"
+    val stockCount: Int = 10,
+    val isOutOfStock: Boolean = false,
+    val imageUrl: String = ""
 )
 
 val Product.commission: Double
@@ -24,7 +27,8 @@ object ProductData {
             isMandatory = true,
             descriptionEn = "Essential daily kit of organic premium tea leaves and direct farm spices at wholesale rates.",
             descriptionGu = "જૈવિક પ્રીમિયમ ચા અને ખેતરના સીધા મસાલાની હોલસેલ ભાવે દૈનિક કીટ.",
-            category = "GROCERY"
+            category = "GROCERY",
+            imageUrl = "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 2,
@@ -34,7 +38,8 @@ object ProductData {
             isMandatory = true,
             descriptionEn = "Cold-pressed pure organic peanut oil, direct from local farmers.",
             descriptionGu = "સ્થાનિક ખેડૂતો પાસેથી સીધું કોલ્ડ-પ્રેસ્ડ શુદ્ધ ઓર્ગેનિક સીંગતેલ.",
-            category = "GROCERY"
+            category = "GROCERY",
+            imageUrl = "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 6,
@@ -44,7 +49,8 @@ object ProductData {
             isMandatory = false,
             descriptionEn = "A2 premium pure hand-churned Vedic cow ghee.",
             descriptionGu = "A2 પ્રીમિયમ શુદ્ધ હાથથી વલોવેલું વૈદિક ગાયનું ઘી.",
-            category = "GROCERY"
+            category = "GROCERY",
+            imageUrl = "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 7,
@@ -54,7 +60,8 @@ object ProductData {
             isMandatory = false,
             descriptionEn = "Long grain aged aromatic Basmati rice for daily use.",
             descriptionGu = "દૈનિક ઉપયોગ માટે લાંબા દાણાવાળા સુગંધિત બાસમતી ચોખા.",
-            category = "GROCERY"
+            category = "GROCERY",
+            imageUrl = "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 3,
@@ -64,7 +71,8 @@ object ProductData {
             isMandatory = false,
             descriptionEn = "Premium handloom cotton khadi kurta for daily wear.",
             descriptionGu = "દૈનિક વસ્ત્રો માટે પ્રીમિયમ હેન્ડલૂમ કોટન ખાદી કુર્તો.",
-            category = "CLOTHING"
+            category = "CLOTHING",
+            imageUrl = "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 8,
@@ -73,8 +81,9 @@ object ProductData {
             price = 850.0,
             isMandatory = false,
             descriptionEn = "Elegant hand-woven premium traditional khadi cotton saree.",
-            descriptionGu = "ભવ્ય હાથથી વણેલી પ્રીમિયમ પરંપરાગત ખાદી સુતરાઉ સાડી.",
-            category = "CLOTHING"
+            descriptionGu = "ભવ્ય હાથથી વણેલી પ્રીમિયમ પરંપરાગત khadi સુતરાઉ સાડી.",
+            category = "CLOTHING",
+            imageUrl = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 9,
@@ -84,7 +93,8 @@ object ProductData {
             isMandatory = false,
             descriptionEn = "Breathable 100% combed cotton comfortable classic round neck T-shirt.",
             descriptionGu = "શ્વાસ લઈ શકાય તેવું ૧૦૦% કોમ્બડ કોટન આરામદાયક ક્લાસિક રાઉન્ડ નેક ટી-શર્ટ.",
-            category = "CLOTHING"
+            category = "CLOTHING",
+            imageUrl = "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 4,
@@ -94,7 +104,8 @@ object ProductData {
             isMandatory = false,
             descriptionEn = "Tracks steps, sleep, and heart rate with 10 days battery life.",
             descriptionGu = "૧૦ દિવસની બેટરી લાઈફ સાથે સ્ટેપ્સ, સ્લીપ અને હાર્ટ રેટ મોનિટર કરે છે.",
-            category = "ELECTRONICS"
+            category = "ELECTRONICS",
+            imageUrl = "https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 10,
@@ -104,7 +115,8 @@ object ProductData {
             isMandatory = false,
             descriptionEn = "20W rapid charging adapter with short-circuit protection.",
             descriptionGu = "શોર્ટ-સર્કિટ પ્રોટેક્શન સાથે ૨૦W નું ઝડપી ચાર્જિંગ એડેપ્ટર.",
-            category = "ELECTRONICS"
+            category = "ELECTRONICS",
+            imageUrl = "https://images.unsplash.com/photo-1622445262465-2481c4574875?auto=format&fit=crop&w=300&q=80"
         ),
         Product(
             id = 11,
@@ -114,7 +126,8 @@ object ProductData {
             isMandatory = false,
             descriptionEn = "Energy saving long-lasting white light LED bulb.",
             descriptionGu = "ઉર્જા બચાવતો લાંબો સમય ચાલતો સફેદ પ્રકાશ આપતો એલઇડી બલ્બ.",
-            category = "ELECTRONICS"
+            category = "ELECTRONICS",
+            imageUrl = "https://images.unsplash.com/photo-1550985616-10810253b84d?auto=format&fit=crop&w=300&q=80"
         )
     )
 }

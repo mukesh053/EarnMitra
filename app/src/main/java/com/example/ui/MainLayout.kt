@@ -1577,7 +1577,11 @@ fun DashboardTab(viewModel: AppViewModel, user: UserAccount) {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- PREMIUM REFERRAL CARD & GENERATOR SECTION ---
-                    val referralLink = "${viewModel.referralWebsiteUrl}/?ref=${user.uid}"
+                    val referralLink = if (viewModel.referralWebsiteUrl.endsWith("/")) {
+                        "${viewModel.referralWebsiteUrl}?ref=${user.uid}"
+                    } else {
+                        "${viewModel.referralWebsiteUrl}/?ref=${user.uid}"
+                    }
 
                     if (user.directReferralsCount >= 3) {
                         Card(
@@ -2197,7 +2201,12 @@ fun WalletTab(viewModel: AppViewModel, user: UserAccount) {
 
     // Google Code Scanner (Live Camera)
     val gmsScanner = remember {
-        com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(context)
+        try {
+            com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(context)
+        } catch (e: Throwable) {
+            android.util.Log.e("Scanner", "Failed to initialize GmsBarcodeScanning safely", e)
+            null
+        }
     }
 
     // Gallery QR Code Reader
@@ -2614,21 +2623,26 @@ fun WalletTab(viewModel: AppViewModel, user: UserAccount) {
                             Button(
                                 onClick = {
                                     try {
-                                        gmsScanner.startScan()
-                                            .addOnSuccessListener { barcode ->
-                                                val rawValue = barcode.rawValue ?: ""
-                                                if (rawValue.isNotBlank()) {
-                                                    val (parsedName, parsedUpi, parsedAmount) = parseUpiQrCode(rawValue)
-                                                    if (parsedName.isNotBlank()) merchantName = parsedName
-                                                    if (parsedUpi.isNotBlank()) merchantUpiId = parsedUpi
-                                                    if (parsedAmount.isNotBlank()) merchantAmount = parsedAmount
-                                                    showQrScannerSim = false
-                                                    Toast.makeText(context, "ક્યુઆર કોડ સ્કેન સફળ! / Scan Success!", Toast.LENGTH_LONG).show()
+                                        val scanner = gmsScanner
+                                        if (scanner != null) {
+                                            scanner.startScan()
+                                                .addOnSuccessListener { barcode ->
+                                                    val rawValue = barcode.rawValue ?: ""
+                                                    if (rawValue.isNotBlank()) {
+                                                        val (parsedName, parsedUpi, parsedAmount) = parseUpiQrCode(rawValue)
+                                                        if (parsedName.isNotBlank()) merchantName = parsedName
+                                                        if (parsedUpi.isNotBlank()) merchantUpiId = parsedUpi
+                                                        if (parsedAmount.isNotBlank()) merchantAmount = parsedAmount
+                                                        showQrScannerSim = false
+                                                        Toast.makeText(context, "ક્યુઆર કોડ સ્કેન સફળ! / Scan Success!", Toast.LENGTH_LONG).show()
+                                                    }
                                                 }
-                                            }
-                                            .addOnFailureListener { e ->
-                                                Toast.makeText(context, "સ્કેન અસફળ: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                                            }
+                                                .addOnFailureListener { e ->
+                                                    Toast.makeText(context, "સ્કેન અસફળ: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                                }
+                                        } else {
+                                            Toast.makeText(context, "કેમેરા સ્કેનર આ ઉપકરણ પર ઉપલબ્ધ નથી! / Camera Scanner not available on this device!", Toast.LENGTH_LONG).show()
+                                        }
                                     } catch (e: Exception) {
                                         Toast.makeText(context, "કેમેરા સ્કેનર શરૂ થઈ શક્યું નથી: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                                     }
@@ -2701,21 +2715,26 @@ fun WalletTab(viewModel: AppViewModel, user: UserAccount) {
                             Button(
                                 onClick = {
                                     try {
-                                        gmsScanner.startScan()
-                                            .addOnSuccessListener { barcode ->
-                                                val rawValue = barcode.rawValue ?: ""
-                                                if (rawValue.isNotBlank()) {
-                                                    val (parsedName, parsedUpi, parsedAmount) = parseUpiQrCode(rawValue)
-                                                    if (parsedName.isNotBlank()) merchantName = parsedName
-                                                    if (parsedUpi.isNotBlank()) merchantUpiId = parsedUpi
-                                                    if (parsedAmount.isNotBlank()) merchantAmount = parsedAmount
-                                                    showQrScannerSim = false
-                                                    Toast.makeText(context, "ક્યુઆર કોડ સ્કેન સફળ! / Scan Success!", Toast.LENGTH_LONG).show()
+                                        val scanner = gmsScanner
+                                        if (scanner != null) {
+                                            scanner.startScan()
+                                                .addOnSuccessListener { barcode ->
+                                                    val rawValue = barcode.rawValue ?: ""
+                                                    if (rawValue.isNotBlank()) {
+                                                        val (parsedName, parsedUpi, parsedAmount) = parseUpiQrCode(rawValue)
+                                                        if (parsedName.isNotBlank()) merchantName = parsedName
+                                                        if (parsedUpi.isNotBlank()) merchantUpiId = parsedUpi
+                                                        if (parsedAmount.isNotBlank()) merchantAmount = parsedAmount
+                                                        showQrScannerSim = false
+                                                        Toast.makeText(context, "ક્યુઆર કોડ સ્કેન સફળ! / Scan Success!", Toast.LENGTH_LONG).show()
+                                                    }
                                                 }
-                                            }
-                                            .addOnFailureListener { e ->
-                                                Toast.makeText(context, "સ્કેન અસફળ: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                                            }
+                                                .addOnFailureListener { e ->
+                                                    Toast.makeText(context, "સ્કેન અસફળ: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                                }
+                                        } else {
+                                            Toast.makeText(context, "કેમેરા સ્કેનર આ ઉપકરણ પર ઉપલબ્ધ નથી! / Camera Scanner not available on this device!", Toast.LENGTH_LONG).show()
+                                        }
                                     } catch (e: Exception) {
                                         Toast.makeText(context, "કેમેરા સ્કેનર શરૂ થઈ શક્યું નથી: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                                     }
@@ -2945,12 +2964,20 @@ fun WalletTab(viewModel: AppViewModel, user: UserAccount) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
+    val context = LocalContext.current
     val lang = viewModel.selectedLanguage
     var selectedCategory by remember { mutableStateOf("ALL") }
     var activeSubTab by remember { mutableStateOf(0) } // 0 for Products, 1 for Order History
     var showCheckoutDialog by remember { mutableStateOf(false) }
+    var showUpiPaymentDetailsDialog by remember { mutableStateOf(false) }
+    var orderUtrInput by remember { mutableStateOf("") }
+    var orderUtrError by remember { mutableStateOf<String?>(null) }
+    var selectedOrderUpiId by remember { mutableStateOf("") }
+    var selectedOrderApp by remember { mutableStateOf("PhonePe") }
     var searchQuery by remember { mutableStateOf("") }
     var shippingCountryCode by remember { mutableStateOf(countryCodes[0]) }
+    var showCodPaymentDialogForOrder by remember { mutableStateOf<Order?>(null) }
+    var viewingProductDetails by remember { mutableStateOf<Product?>(null) }
 
     Column(
         modifier = Modifier
@@ -3087,20 +3114,38 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.1f)),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewingProductDetails = product }
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Product Image placeholder / colored box with icon
+                            // Product Image / colored box with icon
                             Box(
                                 modifier = Modifier
                                     .size(70.dp)
-                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)),
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("🛍️", fontSize = 28.sp)
+                                if (product.imageUrl.isNotBlank()) {
+                                    coil.compose.AsyncImage(
+                                        model = product.imageUrl,
+                                        contentDescription = name,
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    val emoji = when (product.category) {
+                                        "GROCERY" -> "🌾"
+                                        "CLOTHING" -> "👕"
+                                        "ELECTRONICS" -> "⚡"
+                                        else -> "🛍️"
+                                    }
+                                    Text(emoji, fontSize = 28.sp)
+                                }
                             }
 
                             Spacer(modifier = Modifier.width(12.dp))
@@ -3127,20 +3172,42 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "કમિશન / Commission: ₹${product.commission}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF2E7D32)
-                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    if (product.isOutOfStock || product.stockCount <= 0) {
+                                        Text(
+                                            text = "આઉટ ઓફ સ્ટોક / Out Of Stock",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "સ્ટોક / Stock: ${product.stockCount}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (product.stockCount <= 3) Color(0xFFE65100) else Color(0xFF2E7D32)
+                                        )
+                                    }
                                 }
                             }
 
                             Spacer(modifier = Modifier.width(8.dp))
 
                             // Cart Controls
-                            if (qtyInCart == 0) {
+                            if (product.isOutOfStock || product.stockCount <= 0) {
+                                Button(
+                                    onClick = { /* Disabled */ },
+                                    enabled = false,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.LightGray,
+                                        contentColor = Color.White
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("સ્ટોક નથી / Sold Out", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            } else if (qtyInCart == 0) {
                                 Button(
                                     onClick = { viewModel.updateCartQuantity(product.id, 1) },
                                     shape = RoundedCornerShape(8.dp),
@@ -3309,18 +3376,91 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 OrderTrackingStepper(order = order)
                                 
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "ચૂકવણી પ્રકાર / Payment: ${if (order.paymentMethod == "COD") "કેશ ઓન ડિલિવરી (COD)" else order.paymentMethod}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Card(
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = when (order.paymentStatus) {
+                                                "PAID" -> Color(0xFFE8F5E9)
+                                                "PENDING_VERIFICATION" -> Color(0xFFFFF3E0)
+                                                else -> Color(0xFFFFEBEE)
+                                            }
+                                        ),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = when (order.paymentStatus) {
+                                                "PAID" -> "ચૂકવેલ / PAID"
+                                                "PENDING_VERIFICATION" -> "વેરિફિકેશન બાકી / VERIFICATION PENDING"
+                                                else -> "બાકી ચૂકવણી / PENDING"
+                                            },
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = when (order.paymentStatus) {
+                                                "PAID" -> Color(0xFF2E7D32)
+                                                "PENDING_VERIFICATION" -> Color(0xFFEF6C00)
+                                                else -> Color(0xFFC62828)
+                                            },
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    if (order.paymentRef.isNotBlank()) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "(UTR: ${order.paymentRef})",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 10.sp,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+
                                 // Mark as delivered button
                                 if (order.status == "PENDING") {
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Button(
-                                        onClick = { viewModel.markOrderAsDelivered(order) },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                        onClick = {
+                                            if (order.paymentMethod == "COD" && order.paymentStatus == "PENDING") {
+                                                showCodPaymentDialogForOrder = order
+                                            } else {
+                                                viewModel.markOrderAsDelivered(order)
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (order.paymentMethod == "COD" && order.paymentStatus == "PENDING") 
+                                                MaterialTheme.colorScheme.primary 
+                                            else 
+                                                Color(0xFF2E7D32)
+                                        ),
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
-                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Icon(
+                                            imageVector = if (order.paymentMethod == "COD" && order.paymentStatus == "PENDING") 
+                                                Icons.Default.Payment 
+                                            else 
+                                                Icons.Default.Check, 
+                                            contentDescription = null, 
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("ઓર્ડર મળ્યો / Mark as Delivered", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text(
+                                            text = if (order.paymentMethod == "COD" && order.paymentStatus == "PENDING") 
+                                                "ચૂકવણી કરો અને મેળવો / Pay & Confirm Delivery" 
+                                            else 
+                                                "ઓર્ડર મળ્યો / Mark as Delivered", 
+                                            fontWeight = FontWeight.Bold, 
+                                            fontSize = 12.sp
+                                        )
                                     }
                                 }
                             }
@@ -3328,6 +3468,169 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                     }
                 }
             }
+        }
+
+        if (viewingProductDetails != null) {
+            val product = viewingProductDetails!!
+            val name = if (lang == Language.GUJARATI) product.nameGu else product.nameEn
+            val desc = if (lang == Language.GUJARATI) product.descriptionGu else product.descriptionEn
+            val qtyInCart = viewModel.cartItems[product.id] ?: 0
+
+            AlertDialog(
+                onDismissRequest = { viewingProductDetails = null },
+                title = null,
+                confirmButton = {
+                    Button(
+                        onClick = { viewingProductDetails = null },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Text("બંધ કરો / Close")
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Large Image / colored box
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (product.imageUrl.isNotBlank()) {
+                                coil.compose.AsyncImage(
+                                    model = product.imageUrl,
+                                    contentDescription = name,
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                val emoji = when (product.category) {
+                                    "GROCERY" -> "🌾"
+                                    "CLOTHING" -> "👕"
+                                    "ELECTRONICS" -> "⚡"
+                                    else -> "🛍️"
+                                }
+                                Text(emoji, fontSize = 64.sp)
+                            }
+                        }
+
+                        // Product Category Badge
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = product.category,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        // Title
+                        Text(
+                            text = name,
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        // Price & Stock
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "₹${product.price}",
+                                fontWeight = FontWeight.Black,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            if (product.isOutOfStock || product.stockCount <= 0) {
+                                Text(
+                                    text = "આઉટ ઓફ સ્ટોક / Out Of Stock",
+                                    color = Color.Red,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            } else {
+                                Text(
+                                    text = "સ્ટોક: ${product.stockCount} / Stock: ${product.stockCount}",
+                                    color = Color(0xFF2E7D32),
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+
+                        // Description
+                        Text(
+                            text = desc,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Add to Cart Control panel inside detail view
+                        if (!product.isOutOfStock && product.stockCount > 0) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                if (qtyInCart > 0) {
+                                    IconButton(
+                                        onClick = { viewModel.updateCartQuantity(product.id, qtyInCart - 1) },
+                                        modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).size(36.dp)
+                                    ) {
+                                        Text("-", fontSize = 20.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    }
+                                    
+                                    Text(
+                                        text = "$qtyInCart",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    )
+                                    
+                                    IconButton(
+                                        onClick = { 
+                                            if (qtyInCart < product.stockCount) {
+                                                viewModel.updateCartQuantity(product.id, qtyInCart + 1)
+                                            } else {
+                                                Toast.makeText(context, "મર્યાદિત સ્ટોક! / Out of stock limit!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).size(36.dp)
+                                    ) {
+                                        Text("+", fontSize = 20.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = { viewModel.updateCartQuantity(product.id, 1) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("કાર્ટમાં ઉમેરો / Add to Cart", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
         }
 
         // --- REAL CHECKOUT DIALOG PLACED OUTSIDE THE SCROLLABLE TABS ---
@@ -3358,8 +3661,21 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                             if (rawPhone.isNotEmpty() && !rawPhone.startsWith("+")) {
                                 viewModel.shippingPhone = "${shippingCountryCode.code} $rawPhone"
                             }
-                            viewModel.checkoutCart()
-                            showCheckoutDialog = false
+                            if (viewModel.selectedPaymentMethod == "UPI") {
+                                if (viewModel.shippingName.isBlank() || viewModel.shippingPhone.isBlank() || viewModel.shippingAddressLines.isBlank() || viewModel.shippingCity.isBlank() || viewModel.shippingPincode.isBlank()) {
+                                    android.widget.Toast.makeText(context, "કૃપા કરીને સંપૂર્ણ વિતરણ સરનામું દાખલ કરો! / Please enter complete shipping address!", android.widget.Toast.LENGTH_LONG).show()
+                                    return@Button
+                                }
+                                selectedOrderUpiId = viewModel.customRegistrationUpiIds.firstOrNull() ?: "earnmitra@ybl"
+                                orderUtrInput = ""
+                                orderUtrError = null
+                                selectedOrderApp = "PhonePe"
+                                showCheckoutDialog = false
+                                showUpiPaymentDetailsDialog = true
+                            } else {
+                                viewModel.checkoutCart()
+                                showCheckoutDialog = false
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
@@ -3612,12 +3928,402 @@ fun ProductsTab(viewModel: AppViewModel, user: UserAccount) {
                         }
                     }
                 }
+                        )
+        }
+
+        if (showUpiPaymentDetailsDialog) {
+            val totalCartPriceCalculated = viewModel.cartItems.entries.sumOf { (productId, qty) ->
+                (viewModel.productsList.find { it.id == productId }?.price ?: 0.0) * qty
+            }
+            val gstCalculated = totalCartPriceCalculated * 0.22
+            val finalPriceCalculated = totalCartPriceCalculated + gstCalculated
+
+            AlertDialog(
+                onDismissRequest = { showUpiPaymentDetailsDialog = false },
+                title = {
+                    Text(
+                        "🔒 સુરક્ષિત UPI પેમેન્ટ / Secure UPI Payment",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val trimmedUtr = orderUtrInput.trim()
+                            if (trimmedUtr.length != 12 || !trimmedUtr.all { it.isDigit() }) {
+                                orderUtrError = "મહેરબાની કરીને સાચો ૧૨-અંકનો UTR નંબર દાખલ કરો / Enter valid 12-digit UTR number"
+                                return@Button
+                            }
+                            if (!trimmedUtr.startsWith("4") && !trimmedUtr.startsWith("5") && !trimmedUtr.startsWith("6")) {
+                                orderUtrError = "અમાન્ય UTR! યુટીઆર નંબર 4, 5 કે 6 થી શરૂ થવો જોઈએ. / Invalid UTR format!"
+                                return@Button
+                            }
+                            val sameDigits = trimmedUtr.all { it == trimmedUtr[0] }
+                            val sequentialDigits = "0123456789012345".contains(trimmedUtr) || "9876543210987654".contains(trimmedUtr)
+                            if (sameDigits || sequentialDigits) {
+                                orderUtrError = "ખોટો UTR નંબર! પુનરાવર્તિત અંકો માન્ય નથી. / Fake UTR! Repeated digits are not allowed."
+                                return@Button
+                            }
+                            
+                            orderUtrError = null
+                            viewModel.checkoutCart(trimmedUtr)
+                            showUpiPaymentDetailsDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                    ) {
+                        Text("યુટીઆર સબમિટ કરો / Submit UTR", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        showUpiPaymentDetailsDialog = false
+                        showCheckoutDialog = true // Go back to checkout details
+                    }) {
+                        Text("પાછા જાઓ / Go Back")
+                    }
+                },
+                text = {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("ચૂકવવાની રકમ / Amount to Pay:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text("₹${String.format("%.2f", finalPriceCalculated)}", fontSize = 24.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                    Text("(કાર્ટ સબટોટલ + ૨૨% જીએસટી સહિત / Including GST)", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+
+                        item {
+                            Text(
+                                text = "૧. પેમેન્ટ મેળવવા માટે UPI ID પસંદ કરો: / Select Payment Gateway:",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            viewModel.customRegistrationUpiIds.forEach { upi ->
+                                val isSelected = selectedOrderUpiId == upi
+                                Card(
+                                    onClick = { selectedOrderUpiId = upi },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    ),
+                                    border = if (isSelected) BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary) else null,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(selected = isSelected, onClick = { selectedOrderUpiId = upi })
+                                        Text(upi, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            Text(
+                                text = "૨. ચૂકવણી કરવા માટે તમારી યુપીઆઈ એપ પસંદ કરો: / Launch UPI App:",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf("PhonePe", "GooglePay", "Paytm").forEach { app ->
+                                    val isSel = selectedOrderApp == app
+                                    Button(
+                                        onClick = { 
+                                            selectedOrderApp = app
+                                            try {
+                                                val upiUri = "upi://pay?pa=$selectedOrderUpiId&pn=EarnMitra&am=${String.format("%.2f", finalPriceCalculated)}&cu=INR&tn=EM-Order-${user.uid}"
+                                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                                    data = android.net.Uri.parse(upiUri)
+                                                    when (app) {
+                                                        "PhonePe" -> setPackage("com.phonepe.app")
+                                                        "GooglePay" -> setPackage("com.google.android.apps.nbu.paisa.user")
+                                                        "Paytm" -> setPackage("net.one97.paytm")
+                                                    }
+                                                }
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                try {
+                                                    val upiUri = "upi://pay?pa=$selectedOrderUpiId&pn=EarnMitra&am=${String.format("%.2f", finalPriceCalculated)}&cu=INR&tn=EM-Order-${user.uid}"
+                                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(upiUri))
+                                                    context.startActivity(intent)
+                                                } catch (ex: Exception) {
+                                                    android.widget.Toast.makeText(context, "તમારા ફોનમાં કોઈ UPI એપ ઉપલબ્ધ નથી! / No UPI App found on this device.", android.widget.Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                        ),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(app, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "૩. પેમેન્ટ પછી ટ્રાન્ઝેક્શન વિગતોમાંથી ૧૨-અંકનો UTR/Ref નંબર કોપી કરો અને નીચે દાખલ કરો: / Copy & paste the 12-digit UTR/Ref number below:",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            OutlinedTextField(
+                                value = orderUtrInput,
+                                onValueChange = { 
+                                    if (it.all { char -> char.isDigit() } && it.length <= 12) {
+                                        orderUtrInput = it
+                                        orderUtrError = null
+                                    }
+                                },
+                                label = { Text("૧૨-અંકનો UTR નંબર / 12-Digit UTR Number") },
+                                isError = orderUtrError != null,
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            if (orderUtrError != null) {
+                                Text(
+                                    text = orderUtrError!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                )
+                            }
+                        }
+
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "⚠️ અસ્વીકરણ: કોઈપણ ખોટી કે નકલી UTR નંબર સબમિટ કરવાથી તમારું એકાઉન્ટ બ્લોક થઈ શકે છે. / Disclaimer: Submitting fake UTRs can lead to permanent account suspension.",
+                                    fontSize = 9.sp,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(8.dp),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
+        if (showCodPaymentDialogForOrder != null) {
+            val orderToPay = showCodPaymentDialogForOrder!!
+            var selectedPaymentOption by remember { mutableStateOf("UPI") } // "UPI", "WALLET", "CASH"
+            val isWalletBalanceSufficient = user.walletBalance >= orderToPay.totalPrice
+
+            AlertDialog(
+                onDismissRequest = { showCodPaymentDialogForOrder = null },
+                title = {
+                    Text(
+                        text = "💳 કેશ ઓન ડિલિવરી ચૂકવણી / COD Payment Collection",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (selectedPaymentOption == "WALLET" && !isWalletBalanceSufficient) {
+                                Toast.makeText(context, "વોલેટમાં અપૂરતું બેલેન્સ છે! / Insufficient Wallet Balance!", Toast.LENGTH_LONG).show()
+                            } else {
+                                viewModel.collectCodPayment(
+                                    order = orderToPay,
+                                    method = selectedPaymentOption,
+                                    onSuccess = {
+                                        showCodPaymentDialogForOrder = null
+                                        Toast.makeText(context, "ચૂકવણી સફળ! ઓર્ડર ડિલિવર થયો છે. / Payment successful! Order delivered.", Toast.LENGTH_LONG).show()
+                                    },
+                                    onFailure = { error ->
+                                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                    ) {
+                        Text("ચૂકવણી કન્ફર્મ કરો / Confirm Payment")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCodPaymentDialogForOrder = null }) {
+                        Text("બંધ કરો / Cancel")
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "આ ઓર્ડર કેશ ઓન ડિલિવરી (COD) પર રાખેલો હતો. કૃપા કરીને વિતરણ મળતી વખતે ચૂકવણી કરવા માટે નીચેનામાંથી વિકલ્પ પસંદ કરો:",
+                            fontSize = 12.sp,
+                            color = Color.DarkGray
+                        )
+                        
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = orderToPay.productNames,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "કુલ ચૂકવવાપાત્ર રકમ / Total Payable: ₹${String.format("%.2f", orderToPay.totalPrice)}",
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "ચૂકવણી વિકલ્પો / Payment Options:",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        // 1. UPI option
+                        Card(
+                            onClick = { selectedPaymentOption = "UPI" },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selectedPaymentOption == "UPI") 
+                                    MaterialTheme.colorScheme.primaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            border = if (selectedPaymentOption == "UPI") 
+                                BorderStroke(2.dp, MaterialTheme.colorScheme.primary) 
+                            else null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedPaymentOption == "UPI",
+                                    onClick = { selectedPaymentOption = "UPI" }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("ઓનલાઇન યુપીઆઈ / UPI (GPay/PhonePe)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text("ઇન્સ્ટન્ટ ઓનલાઇન ચૂકવણી કરો / Instant Online UPI", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+
+                        // 2. Wallet option
+                        Card(
+                            onClick = { selectedPaymentOption = "WALLET" },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selectedPaymentOption == "WALLET") 
+                                    MaterialTheme.colorScheme.primaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            border = if (selectedPaymentOption == "WALLET") 
+                                BorderStroke(2.dp, MaterialTheme.colorScheme.primary) 
+                            else null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedPaymentOption == "WALLET",
+                                    onClick = { selectedPaymentOption = "WALLET" }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("EarnMitra વોલેટ બેલેન્સ / Wallet", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(
+                                        text = "બેલેન્સ / Balance: ₹${String.format("%.2f", user.walletBalance)}", 
+                                        fontSize = 10.sp, 
+                                        color = if (isWalletBalanceSufficient) Color.Gray else Color(0xFFC62828),
+                                        fontWeight = if (isWalletBalanceSufficient) FontWeight.Normal else FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        // 3. Cash payment option
+                        Card(
+                            onClick = { selectedPaymentOption = "CASH" },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selectedPaymentOption == "CASH") 
+                                    MaterialTheme.colorScheme.primaryContainer 
+                                else 
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ),
+                            border = if (selectedPaymentOption == "CASH") 
+                                BorderStroke(2.dp, MaterialTheme.colorScheme.primary) 
+                            else null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedPaymentOption == "CASH",
+                                    onClick = { selectedPaymentOption = "CASH" }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text("રોકડ ચૂકવણી / Pay by Cash", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text("ડિલિવરી એજન્ટને રોકડા રૂપિયા આપો / Cash paid to delivery person", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+                    }
+                }
             )
         }
     }
-}
-
-// 4. Settings & Security Tab
+}// 4. Settings & Security Tab
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
@@ -4210,13 +4916,6 @@ fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
         item {
             var pinLockEnabled by remember(user.isSecurityLockEnabled) { mutableStateOf(user.isSecurityLockEnabled) }
             var pinCodeInput by remember(user.securityPin) { mutableStateOf(user.securityPin ?: "1234") }
-            var twilioEnabled by remember(user.realOtpEnabled) { mutableStateOf(user.realOtpEnabled) }
-
-            var twilioSid by remember(user.twilioSid) { mutableStateOf(user.twilioSid ?: "") }
-            var twilioToken by remember(user.twilioToken) { mutableStateOf(user.twilioToken ?: "") }
-            var twilioFromPhone by remember(user.twilioFromPhone) { mutableStateOf(user.twilioFromPhone ?: "") }
-
-            var smsSimulationMode by remember(viewModel.globalRealOtpMode) { mutableStateOf(viewModel.globalRealOtpMode) }
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -4261,67 +4960,16 @@ fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 2. Real OTP Toggle
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("રિયલ ઓટીપી મોડ (Twilio) / Real OTP Mode", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                            Text("SMS અને WhatsApp પર રિયલ OTP મોકલવા માટે Twilio ગોઠવો.", fontSize = 11.sp, color = Color.Gray)
-                        }
-                        Switch(
-                            checked = twilioEnabled,
-                            onCheckedChange = { twilioEnabled = it }
-                        )
-                    }
-
-                    if (twilioEnabled) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = twilioSid,
-                            onValueChange = { twilioSid = it },
-                            label = { Text("Twilio Account SID") },
-                            leadingIcon = { Icon(Icons.Default.AccountBox, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = twilioToken,
-                            onValueChange = { twilioToken = it },
-                            label = { Text("Twilio Auth Token") },
-                            leadingIcon = { Icon(Icons.Default.VpnKey, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = twilioFromPhone,
-                            onValueChange = { twilioFromPhone = it },
-                            label = { Text("Twilio Sender Number") },
-                            placeholder = { Text("e.g. +14155238886 or whatsapp:+14155238886") },
-                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
                         onClick = {
                             viewModel.updateSecuritySettings(
                                 isLockEnabled = pinLockEnabled,
                                 pin = pinCodeInput,
-                                twilioSid = twilioSid,
-                                twilioToken = twilioToken,
-                                twilioFrom = twilioFromPhone,
-                                isRealOtp = twilioEnabled
+                                twilioSid = user.twilioSid ?: "",
+                                twilioToken = user.twilioToken ?: "",
+                                twilioFrom = user.twilioFromPhone ?: "",
+                                isRealOtp = user.realOtpEnabled
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -4561,175 +5209,280 @@ fun SettingsTab(viewModel: AppViewModel, user: UserAccount) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.15f))
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.15f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // Title and Current Version row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text("એપ્લિકેશન અપડેટ / In-App Update", fontWeight = FontWeight.Bold)
-                                Text("સંસ્કરણ / Current Version: v${viewModel.currentVersionName}", fontSize = 11.sp, color = Color.Gray)
-                            }
-                        }
-                        Button(
-                            onClick = { viewModel.checkForUpdates(context, forceManualCheck = true) },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("તપાસો / Check", fontSize = 11.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { testerOptionsExpanded = !testerOptionsExpanded }
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Build, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("વધારાના ટેસ્ટર સેટિંગ્સ / Tester Controls", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                        }
                         Icon(
-                            imageVector = if (testerOptionsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            imageVector = Icons.Default.SystemUpdate,
                             contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(16.dp)
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(26.dp)
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "એપ્લિકેશન અપડેટ / In-App Update",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "સંસ્કરણ / Current Version: v${viewModel.currentVersionName}",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                        }
                     }
 
-                    if (testerOptionsExpanded) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // If an update is available (newVersionCode > currentVersionCode)
+                    val isUpdateAvailable = viewModel.currentVersionCode < viewModel.newVersionCode
+                    
+                    if (isUpdateAvailable) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Button(
-                                onClick = {
-                                    viewModel.updateType = InAppUpdateType.FLEXIBLE
-                                    viewModel.checkForUpdates(context, forceManualCheck = true)
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.secondary),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Flexible ટેસ્ટ", fontSize = 10.sp)
-                            }
-
-                            Button(
-                                onClick = {
-                                    viewModel.triggerForceImmediateUpdate()
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.error),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Immediate ટેસ્ટ", fontSize = 10.sp)
-                            }
-
-                            Button(
-                                onClick = { viewModel.resetVersionForTesting() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray.copy(alpha = 0.1f), contentColor = Color.DarkGray),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("રીસેટ v1.0", fontSize = 10.sp)
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.NewReleases,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "નવું વર્ઝન v${viewModel.newVersionName} ઉપલબ્ધ છે! / New version v${viewModel.newVersionName} is available!",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                
+                                if (viewModel.updateReleaseNotes.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "નવું શું છે / What's New:",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = Color.DarkGray
+                                    )
+                                    Text(
+                                        text = viewModel.updateReleaseNotes,
+                                        fontSize = 11.sp,
+                                        color = Color.Gray
+                                    )
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "સર્વર અપડેટ કંટ્રોલ / Server Update Control",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        OutlinedTextField(
-                            value = editDriveUrl,
-                            onValueChange = { editDriveUrl = it },
-                            label = { Text("અપડેટ APK લિંક (GitHub Pages અથવા Drive) / APK Update Link", fontSize = 10.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
-                            singleLine = true
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = editVersionName,
-                                onValueChange = { editVersionName = it },
-                                label = { Text("નવું વર્ઝન નેમ / Version Name", fontSize = 10.sp) },
-                                modifier = Modifier.weight(1f),
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
-                                singleLine = true
-                            )
-                            
-                            OutlinedTextField(
-                                value = editVersionCode,
-                                onValueChange = { editVersionCode = it },
-                                label = { Text("વર્ઝન કોડ / Version Code", fontSize = 10.sp) },
-                                modifier = Modifier.weight(1f),
-                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
-                                singleLine = true
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        OutlinedTextField(
-                            value = editReleaseNotes,
-                            onValueChange = { editReleaseNotes = it },
-                            label = { Text("નવું શું છે / Release Notes (Gujarati / English)", fontSize = 10.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
-                            maxLines = 4
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
+
+                        // Wide Download/Update Button at the bottom
                         Button(
-                            onClick = {
-                                val vCode = editVersionCode.toIntOrNull() ?: viewModel.newVersionCode
-                                viewModel.saveUpdateConfiguration(editVersionName, vCode, editReleaseNotes, editDriveUrl)
-                                Toast.makeText(context, "અપડેટ વિગતો સેવ થઈ ગઈ! / Update config saved!", Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { viewModel.startUpdateDownload() },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("સેવ અને લાગુ કરો / Save & Apply Update", fontSize = 11.sp)
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("ડાઉનલોડ અને ઇન્સ્ટોલ કરો / Download & Install", fontSize = 13.sp)
+                        }
+                    } else {
+                        // Up to date indicator
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF2E7D32), // Green color
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "તમે નવીનતમ સંસ્કરણ પર છો / You are on the latest version.",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF2E7D32)
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Play Store Toggle
+                        // Center/wide Check button at the bottom of update section
+                        OutlinedButton(
+                            onClick = { viewModel.checkForUpdates(context, forceManualCheck = true) },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("અપડેટ માટે તપાસો / Check for Updates", fontSize = 12.sp)
+                        }
+                    }
+
+                    // Show Tester Controls only if user is Admin (EM10000)
+                    if (user.uid == "EM10000") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { testerOptionsExpanded = !testerOptionsExpanded }
+                                .padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("ગૂગલ પ્લે અપડેટ કનેક્શન / Try Real Play Store API", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                Text("જો એપ પ્લે સ્ટોર પર હોય તો જ કામ કરે / Only works if installed from Google Play", fontSize = 9.sp, color = Color.Gray)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Build, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("વધારાના ટેસ્ટર સેટિંગ્સ / Tester Controls", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                             }
-                            Switch(
-                                checked = viewModel.usePlayStoreUpdate,
-                                onCheckedChange = { viewModel.usePlayStoreUpdate = it }
+                            Icon(
+                                imageVector = if (testerOptionsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
                             )
+                        }
+
+                        if (testerOptionsExpanded) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        viewModel.updateType = InAppUpdateType.FLEXIBLE
+                                        viewModel.checkForUpdates(context, forceManualCheck = true)
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.secondary),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Flexible ટેસ્ટ", fontSize = 10.sp)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        viewModel.triggerForceImmediateUpdate()
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f), contentColor = MaterialTheme.colorScheme.error),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("Immediate ટેસ્ટ", fontSize = 10.sp)
+                                }
+
+                                Button(
+                                    onClick = { viewModel.resetVersionForTesting() },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray.copy(alpha = 0.1f), contentColor = Color.DarkGray),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text("રીસેટ v1.0", fontSize = 10.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "સર્વર અપડેટ કંટ્રોલ / Server Update Control",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            OutlinedTextField(
+                                value = editDriveUrl,
+                                onValueChange = { editDriveUrl = it },
+                                label = { Text("અપડેટ APK લિંક (GitHub Pages અથવા Drive) / APK Update Link", fontSize = 10.sp) },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = editVersionName,
+                                    onValueChange = { editVersionName = it },
+                                    label = { Text("નવું વર્ઝન નેમ / Version Name", fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                                    singleLine = true
+                                )
+                                
+                                OutlinedTextField(
+                                    value = editVersionCode,
+                                    onValueChange = { editVersionCode = it },
+                                    label = { Text("વર્ઝન કોડ / Version Code", fontSize = 10.sp) },
+                                    modifier = Modifier.weight(1f),
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                                    singleLine = true
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            OutlinedTextField(
+                                value = editReleaseNotes,
+                                onValueChange = { editReleaseNotes = it },
+                                label = { Text("નવું શું છે / Release Notes (Gujarati / English)", fontSize = 10.sp) },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
+                                maxLines = 4
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Button(
+                                onClick = {
+                                    val vCode = editVersionCode.toIntOrNull() ?: viewModel.newVersionCode
+                                    viewModel.saveUpdateConfiguration(editVersionName, vCode, editReleaseNotes, editDriveUrl)
+                                    Toast.makeText(context, "અપડેટ વિગતો સેવ થઈ ગઈ! / Update config saved!", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("સેવ અને લાગુ કરો / Save & Apply Update", fontSize = 11.sp)
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Play Store Toggle
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("ગૂગલ પ્લે અપડેટ કનેક્શન / Try Real Play Store API", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    Text("જો એપ પ્લે સ્ટોર પર હોય તો જ કામ કરે / Only works if installed from Google Play", fontSize = 9.sp, color = Color.Gray)
+                                }
+                                Switch(
+                                    checked = viewModel.usePlayStoreUpdate,
+                                    onCheckedChange = { viewModel.usePlayStoreUpdate = it }
+                                )
+                            }
                         }
                     }
                 }
@@ -7468,6 +8221,9 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
     var prodDescEn by remember { mutableStateOf("") }
     var prodDescGu by remember { mutableStateOf("") }
     var prodIsMandatory by remember { mutableStateOf(false) }
+    var prodStockCount by remember { mutableStateOf("10") }
+    var prodIsOutOfStock by remember { mutableStateOf(false) }
+    var prodImageUrl by remember { mutableStateOf("") }
     
     LazyColumn(
         modifier = Modifier
@@ -7632,6 +8388,143 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                                             Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text("Approve", fontSize = 11.sp, color = Color.White)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 1b. Pending Product Order approvals
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingBag,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "પેન્ડિંગ ઓર્ડર પેમેન્ટ વિનંતીઓ / Pending Order Payments",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val pendingOrdersList = viewModel.allOrdersListState.filter { it.paymentStatus == "PENDING_VERIFICATION" }
+                    if (pendingOrdersList.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "કોઈ પેન્ડિંગ ઓર્ડર ચુકવણીઓ નથી! / No pending order approvals",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                    } else {
+                        pendingOrdersList.forEach { pendingOrder ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("ઓર્ડર ID: #${pendingOrder.id}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Text("કસ્ટમર UID: ${pendingOrder.uid}", fontSize = 11.sp, color = Color.Gray)
+                                            Text("પ્રોડક્ટ્સ: ${pendingOrder.productNames}", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                            Text("સરનામું: ${pendingOrder.shippingAddress}", fontSize = 11.sp, color = Color.Gray)
+                                        }
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        ) {
+                                            Text("₹${String.format("%.2f", pendingOrder.totalPrice)}", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("UTR: ${pendingOrder.paymentRef}", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                        IconButton(
+                                            onClick = {
+                                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                val clip = android.content.ClipData.newPlainText("UTR", pendingOrder.paymentRef)
+                                                clipboard.setPrimaryClip(clip)
+                                                Toast.makeText(context, "UTR નકલ થઈ ગઈ! / UTR Copied!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy UTR", modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { 
+                                                // Reject/Cancel Order Payment
+                                                viewModel.adminUpdateOrderStatus(pendingOrder, "CANCELLED")
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                        ) {
+                                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Reject & Cancel", fontSize = 10.sp, maxLines = 1)
+                                        }
+                                        Button(
+                                            onClick = { 
+                                                // Approve Order Payment
+                                                viewModel.adminApproveOrderPayment(pendingOrder)
+                                            },
+                                            modifier = Modifier.weight(1.2f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                                        ) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Approve Payment", fontSize = 10.sp, color = Color.White, maxLines = 1)
                                         }
                                     }
                                 }
@@ -8176,6 +9069,9 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                                 prodDescEn = ""
                                 prodDescGu = ""
                                 prodIsMandatory = false
+                                prodStockCount = "10"
+                                prodIsOutOfStock = false
+                                prodImageUrl = ""
                                 showAddProductDialog = true
                             },
                             modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).size(36.dp)
@@ -8268,6 +9164,9 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                                                         prodDescEn = product.descriptionEn
                                                         prodDescGu = product.descriptionGu
                                                         prodIsMandatory = product.isMandatory
+                                                        prodStockCount = product.stockCount.toString()
+                                                        prodIsOutOfStock = product.isOutOfStock
+                                                        prodImageUrl = product.imageUrl
                                                     },
                                                     modifier = Modifier.size(28.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                                                 ) {
@@ -8418,6 +9317,36 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                         shape = RoundedCornerShape(12.dp)
                     )
                     
+                    OutlinedTextField(
+                        value = prodStockCount,
+                        onValueChange = { prodStockCount = it },
+                        label = { Text("સ્ટોક સંખ્યા / Stock Count") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    OutlinedTextField(
+                        value = prodImageUrl,
+                        onValueChange = { prodImageUrl = it },
+                        label = { Text("પ્રોડક્ટ ફોટો URL / Product Image URL") },
+                        placeholder = { Text("https://example.com/image.jpg") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("આઉટ ઓફ સ્ટોક બતાવો / Mark as Out of Stock:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Switch(
+                            checked = prodIsOutOfStock,
+                            onCheckedChange = { prodIsOutOfStock = it }
+                        )
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -8435,6 +9364,7 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                 Button(
                     onClick = {
                         val p = prodPrice.toDoubleOrNull()
+                        val sc = prodStockCount.toIntOrNull() ?: 10
                         if (prodNameEn.isNotBlank() && prodNameGu.isNotBlank() && p != null && p > 0) {
                             viewModel.addProduct(
                                 nameEn = prodNameEn,
@@ -8443,7 +9373,10 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                                 category = prodCategory,
                                 descriptionEn = prodDescEn,
                                 descriptionGu = prodDescGu,
-                                isMandatory = prodIsMandatory
+                                isMandatory = prodIsMandatory,
+                                stockCount = sc,
+                                isOutOfStock = prodIsOutOfStock || (sc <= 0),
+                                imageUrl = prodImageUrl
                             )
                             showAddProductDialog = false
                         } else {
@@ -8524,6 +9457,36 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                         shape = RoundedCornerShape(12.dp)
                     )
                     
+                    OutlinedTextField(
+                        value = prodStockCount,
+                        onValueChange = { prodStockCount = it },
+                        label = { Text("સ્ટોક સંખ્યા / Stock Count") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    OutlinedTextField(
+                        value = prodImageUrl,
+                        onValueChange = { prodImageUrl = it },
+                        label = { Text("પ્રોડક્ટ ફોટો URL / Product Image URL") },
+                        placeholder = { Text("https://example.com/image.jpg") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("આઉટ ઓફ સ્ટોક બતાવો / Mark as Out of Stock:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Switch(
+                            checked = prodIsOutOfStock,
+                            onCheckedChange = { prodIsOutOfStock = it }
+                        )
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -8541,6 +9504,7 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                 Button(
                     onClick = {
                         val p = prodPrice.toDoubleOrNull()
+                        val sc = prodStockCount.toIntOrNull() ?: 10
                         if (prodNameEn.isNotBlank() && prodNameGu.isNotBlank() && p != null && p > 0) {
                             val updated = editingProduct!!.copy(
                                 nameEn = prodNameEn,
@@ -8549,7 +9513,10 @@ fun AdminTab(viewModel: AppViewModel, user: UserAccount) {
                                 category = prodCategory,
                                 descriptionEn = prodDescEn,
                                 descriptionGu = prodDescGu,
-                                isMandatory = prodIsMandatory
+                                isMandatory = prodIsMandatory,
+                                stockCount = sc,
+                                isOutOfStock = prodIsOutOfStock || (sc <= 0),
+                                imageUrl = prodImageUrl
                             )
                             viewModel.updateProduct(updated)
                             editingProduct = null

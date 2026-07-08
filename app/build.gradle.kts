@@ -11,12 +11,12 @@ plugins {
 
 android {
   namespace = "com.example"
-  compileSdk { version = release(36) { minorApiLevel = 1 } }
+  compileSdk = 36
 
   defaultConfig {
     applicationId = "com.aistudio.earnmitra.qxpkzr"
     minSdk = 24
-    targetSdk = 36
+    targetSdk = 35
     versionCode = 1
     versionName = "1.0"
 
@@ -48,9 +48,9 @@ android {
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
-      isDebuggable = false
-      isMinifyEnabled = true
-      isShrinkResources = true
+      isDebuggable = true
+      isMinifyEnabled = false
+      isShrinkResources = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("debugConfig")
     }
@@ -147,13 +147,29 @@ tasks.register<Copy>("copyApkToBuildOutputs") {
 }
 
 tasks.register<Copy>("copyApkToDownload") {
+  mustRunAfter("copyApkToBuildOutputs")
   from("build/outputs/apk/debug/app-debug.apk")
   into("../APK_DOWNLOAD")
 }
 
+tasks.register("copyApkToRoot") {
+  mustRunAfter("copyApkToDownload")
+  val inputFile = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk")
+  val outputFile = layout.projectDirectory.file("../app-debug.apk")
+  inputs.file(inputFile)
+  outputs.file(outputFile)
+  doLast {
+    val src = inputFile.get().asFile
+    val dest = outputFile.asFile
+    if (src.exists()) {
+      src.copyTo(dest, overwrite = true)
+    }
+  }
+}
+
 tasks.configureEach {
   if (name == "assembleDebug") {
-    finalizedBy("copyApkToBuildOutputs", "copyApkToDownload")
+    finalizedBy("copyApkToBuildOutputs", "copyApkToDownload", "copyApkToRoot")
   }
 }
 

@@ -449,6 +449,10 @@ class AppRepository(private val appDao: AppDao) {
         return appDao.getOrdersByUidFlow(uid)
     }
 
+    fun getAllOrdersFlow(): Flow<List<Order>> {
+        return appDao.getAllOrdersFlow()
+    }
+
     suspend fun insertOrder(order: Order) {
         appDao.insertOrder(order)
         try {

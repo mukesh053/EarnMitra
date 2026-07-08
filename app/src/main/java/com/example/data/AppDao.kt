@@ -50,6 +50,9 @@ interface AppDao {
     @Query("SELECT * FROM orders WHERE uid = :uid ORDER BY timestamp DESC")
     fun getOrdersByUidFlow(uid: String): Flow<List<Order>>
 
+    @Query("SELECT * FROM orders ORDER BY timestamp DESC")
+    fun getAllOrdersFlow(): Flow<List<Order>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrder(order: Order)
 

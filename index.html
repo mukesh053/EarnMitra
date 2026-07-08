@@ -63,11 +63,28 @@
             <p class="text-slate-500 text-sm mb-6">નીચે આપેલા લિંક પરથી ઓફિશિયલ APK ફાઇલ ડાઉનલોડ કરો અને ઘરે બેઠા કમાણી શરૂ કરો.</p>
             
             <!-- Download Button -->
-            <a href="./APK_DOWNLOAD/app-debug.apk?v=4.0mb" id="downloadBtn" class="accent-gradient text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-3 w-full mb-4">
+            <a href="./APK_DOWNLOAD/app-debug.apk?v=1.0" download="EarnMitra.apk" id="downloadBtn" class="accent-gradient text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-3 w-full mb-4">
                 <i class="fa-solid fa-cloud-arrow-down text-xl"></i>
                 ડાઉનલોડ કરો / Download App
             </a>
-            <p class="text-xs text-slate-400">ફાઇલ સાઇઝ: ~૪.૦ MB | ૧૦૦% વાયરસ મુક્ત અને સુરક્ષિત</p>
+
+            <!-- Alternative Fallback Links -->
+            <div class="mt-4 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-left">
+                <h4 class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                    <i class="fa-solid fa-link text-orange-500"></i>
+                    જો ડાઉનલોડ કામ ન કરે તો વૈકલ્પિક લિંક્સ ચકાસો: / If download fails, try these alternative links:
+                </h4>
+                <div class="grid grid-cols-1 gap-2 text-xs">
+                    <a href="./app-debug.apk" download="EarnMitra.apk" id="directDownloadLink" class="text-orange-600 hover:underline flex items-center gap-1">
+                        <i class="fa-solid fa-file-arrow-down"></i> લિંક ૧: સર્વર ડાયરેક્ટ ડાઉનલોડ / Option 1: Direct Server Link
+                    </a>
+                    <a href="https://drive.google.com/file/d/1_9i7RMyE4M9N17lFmB9u_JzWqXv9tF3z/view?usp=sharing" target="_blank" class="text-orange-600 hover:underline flex items-center gap-1">
+                        <i class="fa-brands fa-google-drive"></i> લિંક ૨: ગૂગલ ડ્રાઇવ ડાયરેક્ટ / Option 2: Google Drive Download
+                    </a>
+                </div>
+            </div>
+            
+            <p class="text-xs text-slate-400 mt-4">ફાઇલ સાઇઝ: ~૭.૦ MB | ૧૦૦% વાયરસ મુક્ત અને સુરક્ષિત</p>
         </div>
 
         <!-- Trust & Security Banner -->
@@ -207,6 +224,18 @@
     <!-- JavaScript to parse ref parameter and show sponsor info -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            // Absolute URL upgrades for reliable downloads on mobile
+            const origin = window.location.origin;
+            const downloadBtn = document.getElementById("downloadBtn");
+            const directDownloadLink = document.getElementById("directDownloadLink");
+            
+            if (downloadBtn && downloadBtn.getAttribute("href").startsWith("./")) {
+                downloadBtn.href = origin + downloadBtn.getAttribute("href").substring(1);
+            }
+            if (directDownloadLink && directDownloadLink.getAttribute("href").startsWith("./")) {
+                directDownloadLink.href = origin + directDownloadLink.getAttribute("href").substring(1);
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const ref = urlParams.get('ref') || urlParams.get('r');
             if (ref && ref.trim() !== "") {
